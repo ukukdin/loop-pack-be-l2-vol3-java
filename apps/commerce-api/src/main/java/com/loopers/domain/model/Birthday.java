@@ -8,6 +8,10 @@ public class Birthday {
 
     private Birthday(LocalDate value) {this.value = value; }
 
+    public LocalDate getValue() {
+        return value;
+    }
+
     public static Birthday of(LocalDate value) {
         if(value == null) {
             throw new IllegalArgumentException("생년월일은 필수 입력값입니다.");

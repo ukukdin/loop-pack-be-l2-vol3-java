@@ -4,7 +4,6 @@ import lombok.Data;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
 
@@ -21,18 +20,16 @@ public class Password {
         return new Password(rawPassword);
     }
     private static void validate(String rawPassword, LocalDate birthday) {
-        List<String> errors = new ArrayList<>();
-
         if (rawPassword == null || rawPassword.isBlank()) {
             throw new IllegalArgumentException("비밀번호는 필수 입력값입니다.");
         }
 
-       if (!ALLOWED_CHARS.matcher(rawPassword).matches()) {
-           errors.add("비밀번호는 8~16자리 영문 대소문자, 숫자, 특수문자만 가능합니다.");
-       }
-       if (birthday != null && containsBirthday(rawPassword, birthday)){
-           errors.add("생년월일은 비밀번호 내에 포함될 수 없습니다.");
-       }
+        if (!ALLOWED_CHARS.matcher(rawPassword).matches()) {
+            throw new IllegalArgumentException("비밀번호는 8~16자리 영문 대소문자, 숫자, 특수문자만 가능합니다.");
+        }
+        if (birthday != null && containsBirthday(rawPassword, birthday)) {
+            throw new IllegalArgumentException("생년월일은 비밀번호 내에 포함될 수 없습니다.");
+        }
     }
 
     static boolean containsBirthday(String rawPassword, LocalDate birthday) {
