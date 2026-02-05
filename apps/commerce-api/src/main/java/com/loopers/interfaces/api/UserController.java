@@ -20,6 +20,14 @@ public class UserController {
     private final PasswordUpdateUseCase passwordUpdateUseCase;
     private final PasswordEncoder passwordEncoder;
 
+    /**
+     * Constructs a UserController with the required use case handlers and password encoder.
+     *
+     * @param registerUseCase      handler responsible for registering users
+     * @param userQueryUseCase     handler responsible for querying user information
+     * @param passwordUpdateUseCase handler responsible for updating user passwords
+     * @param passwordEncoder      component used to encode user passwords
+     */
     public UserController(
             RegisterUseCase registerUseCase,
             UserQueryUseCase userQueryUseCase,
@@ -32,6 +40,17 @@ public class UserController {
         this.passwordEncoder = passwordEncoder;
     }
 
+    /**
+     * Registers a new user using the provided registration data and returns a successful empty response.
+     *
+     * @param request the registration payload containing the user's credentials and profile data:
+     *                - `loginId`: the unique login identifier
+     *                - `name`: the user's display name
+     *                - `birthday`: the user's birth date in `yyyyMMdd` format
+     *                - `password`: the plain-text password to be encoded
+     *                - `email`: the user's email address
+     * @return        HTTP 200 OK with an empty body on successful registration
+     */
     @PostMapping("/register")
     public ResponseEntity<Void> register(@RequestBody UserRegisterRequest request) {
         UserId userId = UserId.of(request.loginId());
@@ -45,6 +64,13 @@ public class UserController {
         return ResponseEntity.ok().build();
     }
 
+    /**
+     * Retrieve the authenticated user's public profile information.
+     *
+     * @param loginId the value of the `X-Loopers-LoginId` request header identifying the user
+     * @param loginPw the value of the `X-Loopers-LoginPw` request header containing the user's password
+     * @return a UserInfoResponse with the user's `loginId`, masked name, `birthday` (formatted as `yyyyMMdd`), and `email`
+     */
     @GetMapping("/me")
     public ResponseEntity<UserInfoResponse> getMyInfo(
             @RequestHeader("X-Loopers-LoginId") String loginId,
@@ -61,6 +87,16 @@ public class UserController {
         ));
     }
 
+    /**
+     * Update the authenticated user's password.
+     *
+     * Uses the provided login headers to identify the user and the request body to obtain the current and new passwords.
+     *
+     * @param loginId the user's login identifier from the `X-Loopers-LoginId` request header
+     * @param loginPw the user's login password from the `X-Loopers-LoginPw` request header
+     * @param request contains the current and new password values for the update
+     * @return HTTP 200 OK with an empty body on successful password update
+     */
     @PutMapping("/me/password")
     public ResponseEntity<Void> updatePassword(
             @RequestHeader("X-Loopers-LoginId") String loginId,
