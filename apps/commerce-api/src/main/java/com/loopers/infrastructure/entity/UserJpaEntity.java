@@ -37,9 +37,23 @@ public class UserJpaEntity {
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    protected UserJpaEntity() {}
+    /**
+ * Protected no-argument constructor required by JPA to instantiate the entity via reflection.
+ */
+protected UserJpaEntity() {}
 
 
+    /**
+     * Create a UserJpaEntity from domain value objects and primitive persistence fields.
+     *
+     * @param id              the primary key value (may be null for a new, unsaved entity)
+     * @param userId          the domain UserId whose string value will be stored in the `userId` column
+     * @param encodedPassword the already-encoded password to store
+     * @param userName        the domain UserName whose string value will be stored in the `username` column
+     * @param birth           the domain Birthday whose LocalDate value will be stored in the `birthday` column
+     * @param email           the domain Email whose string value will be stored in the `email` column
+     * @param createdAt       the creation timestamp to store in the `createdAt` column
+     */
     public UserJpaEntity(Long id, UserId userId, String encodedPassword, UserName userName, Birthday birth, Email email, LocalDateTime createdAt) {
         this.id = id;
         this.userId = userId.getValue();

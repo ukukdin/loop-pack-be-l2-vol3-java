@@ -20,6 +20,10 @@ class UserQueryServiceTest {
     private UserRepository userRepository;
     private UserQueryService service;
 
+    /**
+     * Initializes test fixtures by creating a mocked UserRepository and constructing
+     * the UserQueryService under test with that mock.
+     */
     @BeforeEach
     void setUp() {
         userRepository = mock(UserRepository.class);
@@ -54,6 +58,11 @@ class UserQueryServiceTest {
         assertThat(result.email()).isEqualTo("test@example.com");
     }
 
+    /**
+     * Verifies that a two-character user name is masked to the first character followed by an asterisk.
+     *
+     * Asserts that calling getUserInfo on a user whose name has exactly two characters returns a masked name of the form "X*".
+     */
     @Test
     @DisplayName("이름 마스킹 - 2자")
     void getUserInfo_maskedName_2chars() {

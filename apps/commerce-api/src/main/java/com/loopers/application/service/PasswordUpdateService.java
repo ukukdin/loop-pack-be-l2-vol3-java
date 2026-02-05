@@ -14,11 +14,25 @@ public class PasswordUpdateService implements PasswordUpdateUseCase {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
+    /**
+     * Creates a PasswordUpdateService with the given dependencies.
+     *
+     * @param userRepository repository used to load and save users
+     * @param passwordEncoder encoder used to verify and encode passwords
+     */
     public PasswordUpdateService(UserRepository userRepository, PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
+    /**
+     * Updates a user's password after validating the current password and ensuring the new password differs.
+     *
+     * @param userId the identifier of the user whose password will be updated
+     * @param currentPassword the user's current password used for verification
+     * @param newPassword the new password to set for the user
+     * @throws IllegalArgumentException if the user is not found, if the current password does not match, or if the new password equals the current password
+     */
     @Override
     public void updatePassword(UserId userId, Password currentPassword, Password newPassword) {
         User user = userRepository.findById(userId)

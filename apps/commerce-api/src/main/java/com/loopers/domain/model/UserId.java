@@ -11,8 +11,20 @@ public class UserId {
 
     private final String value;
 
-    private UserId(String value) {this.value = value;}
+    /**
+ * Initializes a UserId with the specified identifier value.
+ *
+ * @param value the identifier string to store in this UserId
+ */
+private UserId(String value) {this.value = value;}
 
+    /**
+     * Create a validated UserId from the given string.
+     *
+     * @param value the input string; leading and trailing whitespace will be trimmed before validation
+     * @return a UserId containing the trimmed value
+     * @throws IllegalArgumentException if {@code value} is null or blank, or if the trimmed value does not consist of 4 to 10 ASCII letters or digits
+     */
     public static UserId of(String value) {
         if(value == null || value.isBlank()) {
             throw new IllegalArgumentException("로그인 ID는 필수 입력값입니다.");
