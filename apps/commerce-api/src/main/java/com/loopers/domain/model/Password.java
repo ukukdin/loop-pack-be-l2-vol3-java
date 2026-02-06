@@ -20,6 +20,7 @@ public class Password {
     private static final DateTimeFormatter FMT_MMDD = DateTimeFormatter.ofPattern("MMdd");
     private static final DateTimeFormatter FMT_YYYY_MM_DD = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final DateTimeFormatter FMT_YY_MM_DD = DateTimeFormatter.ofPattern("yy-MM-dd");
+    private static final DateTimeFormatter FMT_MM_DD = DateTimeFormatter.ofPattern("MM-dd");
 
     private final String value;
 
@@ -49,7 +50,8 @@ public class Password {
                 birthday.format(FMT_YYMMDD),
                 birthday.format(FMT_MMDD),
                 birthday.format(FMT_YYYY_MM_DD),
-                birthday.format(FMT_YY_MM_DD)
+                birthday.format(FMT_YY_MM_DD),
+                birthday.format(FMT_MM_DD)
         );
 
         return patterns.stream().anyMatch(rawPassword::contains);

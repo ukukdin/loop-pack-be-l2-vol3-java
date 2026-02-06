@@ -100,6 +100,15 @@ class UserIdTest {
         assertThat(userId.getValue()).isEqualTo("abcdefghij");
     }
 
-
+    @Test
+    @DisplayName("로그인 ID 대문자 포함시 예외")
+    void create_fail_uppercase() {
+        //give
+        String value = "TEST1234";
+        //when and then
+        assertThatThrownBy(() -> UserId.of(value))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("영문 소문자");
+    }
 
 }

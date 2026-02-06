@@ -1,17 +1,14 @@
 package com.loopers.domain.model;
 
-import lombok.ToString;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
 import lombok.Value;
 
 @Value
-@ToString
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class WrongPasswordCount {
 
     private final int value;
-
-    private WrongPasswordCount(int value) {
-        this.value = value;
-    }
 
     public static WrongPasswordCount init() {
         return new WrongPasswordCount(0);
