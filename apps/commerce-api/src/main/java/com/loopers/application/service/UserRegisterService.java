@@ -3,7 +3,9 @@ package com.loopers.application.service;
 import com.loopers.application.RegisterUseCase;
 import com.loopers.domain.model.*;
 import com.loopers.domain.repository.UserRepository;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 
@@ -17,21 +19,21 @@ public class UserRegisterService implements RegisterUseCase {
     }
 
     @Override
+    @Transactional
     public void register(UserId userId, UserName userName, String encodedPassword, Birthday birthday, Email email) {
-        if (userRepository.existsById(userId)) {
-            throw new IllegalArgumentException("이미 사용중인 ID 입니다.");
-        }
-
-        User user = User.register(
-                userId,
-                userName,
-                encodedPassword,
-                birthday,
-                email,
-                WrongPasswordCount.init(),
-                LocalDateTime.now()
-        );
-
-        userRepository.save(user);
+        try {
+            User user = User.register(
+                    userId,
+                    userName,
+                    encodedPassword,
+                    birthday,
+                    email,
+                    WrongPasswordCount.init(),
+                    LocalDateTime.now()
+            );
+            userRepository.save(user);
+            } catch (DataIntegrityViolationException ex) {
+                throw new IllegalArgumentException("이미 사용중인 ID 입니다.", ex);
+            }
     }
 }

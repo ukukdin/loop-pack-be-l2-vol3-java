@@ -8,6 +8,8 @@ import com.loopers.domain.service.PasswordEncoder;
 import com.loopers.interfaces.api.dto.PasswordUpdateRequest;
 import com.loopers.interfaces.api.dto.UserInfoResponse;
 import com.loopers.interfaces.api.dto.UserRegisterRequest;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -33,7 +35,7 @@ public class UserController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<Void> register(@RequestBody UserRegisterRequest request) {
+    public ResponseEntity<Void> register(@Valid @RequestBody UserRegisterRequest request) {
         UserId userId = UserId.of(request.loginId());
         UserName userName = UserName.of(request.name());
         Birthday birthday = Birthday.of(request.birthday());
@@ -47,35 +49,28 @@ public class UserController {
 
     @GetMapping("/me")
     public ResponseEntity<UserInfoResponse> getMyInfo(
-            @RequestHeader("X-Loopers-LoginId") String loginId,
-            @RequestHeader("X-Loopers-LoginPw") String loginPw
+            @NotBlank @RequestHeader("X-Loopers-LoginId") String loginId,
+            @NotBlank @RequestHeader("X-Loopers-LoginPw") String loginPw
     ) {
         UserId userId = UserId.of(loginId);
         var userInfo = userQueryUseCase.getUserInfo(userId);
 
-        return ResponseEntity.ok(new UserInfoResponse(
-                userInfo.loginId(),
-                userInfo.maskedName(),
-                userInfo.birthday(),
-                userInfo.email()
-        ));
+        return ResponseEntity.ok(UserInfoResponse.from(userInfo));
     }
 
     @PutMapping("/me/password")
     public ResponseEntity<Void> updatePassword(
-            @RequestHeader("X-Loopers-LoginId") String loginId,
-            @RequestHeader("X-Loopers-LoginPw") String loginPw,
-            @RequestBody PasswordUpdateRequest request
+            @NotBlank @RequestHeader("X-Loopers-LoginId") String loginId,
+            @NotBlank @RequestHeader("X-Loopers-LoginPw") String loginPw,
+            @Valid @RequestBody PasswordUpdateRequest request
     ) {
         UserId userId = UserId.of(loginId);
 
         // 현재 비밀번호와 새 비밀번호 생성 (생년월일 검증을 위해 사용자 정보 필요)
         var userInfo = userQueryUseCase.getUserInfo(userId);
-        java.time.LocalDate birthday = java.time.LocalDate.parse(userInfo.birthday(),
-                java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd"));
 
-        Password currentPassword = Password.of(request.currentPassword(), birthday);
-        Password newPassword = Password.of(request.newPassword(), birthday);
+        Password currentPassword = Password.of(request.currentPassword(), userInfo.birthday());
+        Password newPassword = Password.of(request.newPassword(), userInfo.birthday());
 
         passwordUpdateUseCase.updatePassword(userId, currentPassword, newPassword);
         return ResponseEntity.ok().build();

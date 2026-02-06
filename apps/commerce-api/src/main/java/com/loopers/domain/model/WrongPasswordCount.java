@@ -1,5 +1,10 @@
 package com.loopers.domain.model;
 
+import lombok.ToString;
+import lombok.Value;
+
+@Value
+@ToString
 public class WrongPasswordCount {
 
     private final int value;

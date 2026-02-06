@@ -12,7 +12,7 @@ class UserIdTest {
 
 
     @Test
-    @DisplayName("유요한 로그인 ID 생성 성공")
+    @DisplayName("유효한 로그인 ID 생성 성공")
     void create_success() {
         //given
         String value = "testid1234";
@@ -35,7 +35,9 @@ class UserIdTest {
                .isInstanceOf(IllegalArgumentException.class)
                .hasMessage("로그인 ID는 필수 입력값입니다.");
 
-    }@Test
+    }
+
+    @Test
     @DisplayName("로그인 ID 4자 미만이면 예외")
     void create_fail_too_short() {
         // given
@@ -83,4 +85,21 @@ class UserIdTest {
         // then
         assertThat(userId.getValue()).isEqualTo("test1234");
     }
+
+    @Test
+    @DisplayName("로그인 ID 4자 성공 (최소 경계)")
+    void create_success_min_length() {
+        UserId userId = UserId.of("abcd");
+        assertThat(userId.getValue()).isEqualTo("abcd");
+    }
+
+    @Test
+    @DisplayName("로그인 ID 10자 성공 (최대 경계)")
+    void create_success_max_length() {
+        UserId userId = UserId.of("abcdefghij");
+        assertThat(userId.getValue()).isEqualTo("abcdefghij");
+    }
+
+
+
 }

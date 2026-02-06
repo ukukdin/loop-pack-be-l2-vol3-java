@@ -36,10 +36,11 @@ class UserRegisterServiceTest {
 
         when(userRepository.existsById(userId)).thenReturn(false);
 
-        // when & then
+        // when and then
         assertThatNoException()
                 .isThrownBy(() -> service.register(userId, userName, encodedPassword, birthday, email));
 
+        verify(userRepository).existsById(userId);
         verify(userRepository).save(any(User.class));
     }
 
