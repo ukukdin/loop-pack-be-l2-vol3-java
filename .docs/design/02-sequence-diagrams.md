@@ -10,7 +10,6 @@
 | Read Flow | 데이터 조회와 DTO 변환 |
 | Write Flow (Admin) | 권한 체크와 데이터 무결성(참조 관계) |
 | Like Flow | 멱등성 보장과 좋아요 수 동기화 |
-| Coupon Flow | 동시성 제어(선착순), 유저당 1회 발급 |
 | Order Flow | 재고/결제/스냅샷의 트랜잭션 |
 
 ---
@@ -22,10 +21,7 @@
 | 객체 | 책임 |
 |------|------|
 | `UserController` | HTTP 요청 수신 및 UseCase 위임 |
-| `UserRegisterService` | 회원가입 오케스트레이션 (값 객체 검증, 중복 확인, 암호화, 저장) |
-| `AuthenticationService` | 헤더 기반 인증 (사용자 조회, 비밀번호 매칭) |
-| `UserQueryService` | 사용자 정보 조회 및 이름 마스킹 |
-| `PasswordUpdateService` | 비밀번호 변경 (기존 검증, 신규 검증, 암호화, 저장) |
+| `UserService` | 회원가입, 인증, 정보 조회, 비밀번호 변경 통합 서비스 |
 | `PasswordEncoder` | 비밀번호 암호화 및 매칭 (SHA-256) |
 | `UserRepository` | 중복 ID 체크 및 사용자 영속화 |
 
@@ -36,7 +32,7 @@ sequenceDiagram
     autonumber
     actor User as 👤 User
     participant API as 🌐 UserController
-    participant Service as 📦 UserRegisterService
+    participant Service as 📦 UserService
     participant VO as 🔒 Value Objects
     participant Encoder as 🛡️ PasswordEncoder
     participant DB as 💾 UserRepository
@@ -92,8 +88,8 @@ sequenceDiagram
     autonumber
     actor User as 👤 User
     participant API as 🌐 UserController
-    participant Auth as 🔐 AuthenticationService
-    participant Query as 🔍 UserQueryService
+    participant Auth as 🔐 UserService
+    participant Query as 🔍 UserService
     participant Encoder as 🛡️ PasswordEncoder
     participant DB as 💾 UserRepository
 
@@ -144,8 +140,8 @@ sequenceDiagram
     autonumber
     actor User as 👤 User
     participant API as 🌐 UserController
-    participant Auth as 🔐 AuthenticationService
-    participant Service as 🔑 PasswordUpdateService
+    participant Auth as 🔐 UserService
+    participant Service as 🔑 UserService
     participant VO as 🔒 Value Objects
     participant Encoder as 🛡️ PasswordEncoder
     participant DB as 💾 UserRepository
@@ -328,7 +324,7 @@ sequenceDiagram
 | 객체 | 책임 |
 |------|------|
 | `LikeController` | HTTP 요청 수신 및 UseCase 위임 |
-| `AuthenticationService` | 헤더 기반 인증 (사용자 조회, 비밀번호 매칭) |
+| `UserService` | 헤더 기반 인증 (사용자 조회, 비밀번호 매칭) |
 | `LikeService` | 좋아요 등록/취소 오케스트레이션 (멱등성 보장) |
 | `ProductRepository` | 상품 존재 여부 확인 |
 | `LikeRepository` | 좋아요 데이터 영속화 및 중복 확인 |
@@ -340,7 +336,7 @@ sequenceDiagram
     autonumber
     actor User as 👤 User
     participant API as 🌐 LikeController
-    participant Auth as 🔐 AuthenticationService
+    participant Auth as 🔐 UserService
     participant Service as ❤️ LikeService
     participant ProductDB as 💾 ProductRepository
     participant LikeDB as 💾 LikeRepository
@@ -400,7 +396,7 @@ sequenceDiagram
     autonumber
     actor User as 👤 User
     participant API as 🌐 LikeController
-    participant Auth as 🔐 AuthenticationService
+    participant Auth as 🔐 UserService
     participant Service as ❤️ LikeService
     participant LikeDB as 💾 LikeRepository
 
@@ -440,101 +436,17 @@ sequenceDiagram
 
 ---
 
-## 5-5. 쿠폰 기능 (Coupon Flow)
-
-**핵심 책임 객체:**
-
-| 객체 | 책임 |
-|------|------|
-| `CouponController` | HTTP 요청 수신 및 UseCase 위임 |
-| `AuthenticationService` | 헤더 기반 인증 (사용자 조회, 비밀번호 매칭) |
-| `CouponIssueService` | 쿠폰 발급 오케스트레이션 (동시성 제어, 중복 방지) |
-| `CouponRepository` | 쿠폰 조회 및 수량 관리 (비관적 락) |
-| `UserCouponRepository` | 유저-쿠폰 발급 이력 관리 |
-
-### Scenario 1 — 선착순 쿠폰 발급 (Issue Coupon)
-
-```mermaid
-sequenceDiagram
-    autonumber
-    actor User as 👤 User
-    participant API as 🌐 CouponController
-    participant Auth as 🔐 AuthenticationService
-    participant Service as 🎟️ CouponIssueService
-    participant CouponDB as 💾 CouponRepository
-    participant UserCouponDB as 💾 UserCouponRepository
-
-    User->>API: POST /api/v1/coupons/{couponId}/issue (Header: X-Loopers-LoginId, X-Loopers-LoginPw)
-
-    rect rgb(255, 230, 230)
-        Note right of API: [책임 1] 헤더 기반 인증
-        API->>Auth: authenticate(userId, rawPassword)
-        alt 인증 실패
-            Auth-->>API: throw IllegalArgumentException
-            API-->>User: 400 Bad Request
-        end
-    end
-
-    API->>Service: issueCoupon(userId, couponId)
-
-    rect rgb(240, 248, 255)
-        Note right of Service: [책임 2] 쿠폰 조회 (비관적 락)
-        Service->>CouponDB: findByIdForUpdate(couponId)
-        Note right of CouponDB: SELECT ... FOR UPDATE (동시성 제어)
-        alt 쿠폰 없음
-            CouponDB-->>Service: Optional.empty()
-            Service-->>API: throw IllegalArgumentException("쿠폰을 찾을 수 없습니다.")
-            API-->>User: 404 Not Found
-        else 쿠폰 존재
-            CouponDB-->>Service: Coupon
-        end
-    end
-
-    rect rgb(255, 240, 245)
-        Note right of Service: [책임 3] 발급 가능 여부 확인
-        Service->>Service: coupon.issuable() — 수량 잔여 확인
-        alt 수량 소진 (Sold Out)
-            Service-->>API: throw IllegalStateException("쿠폰이 모두 소진되었습니다.")
-            API-->>User: 409 Conflict
-        end
-
-        Service->>UserCouponDB: existsByUserIdAndCouponId(userId, couponId)
-        alt 이미 발급받음
-            UserCouponDB-->>Service: true
-            Service-->>API: throw IllegalStateException("이미 발급받은 쿠폰입니다.")
-            API-->>User: 409 Conflict
-        else 미발급
-            UserCouponDB-->>Service: false
-        end
-    end
-
-    rect rgb(240, 255, 240)
-        Note right of Service: [책임 4] 쿠폰 발급 처리
-        Service->>Service: coupon.issue() — issuedQuantity++
-        Service->>CouponDB: save(coupon)
-        Service->>Service: UserCoupon.create(userId, couponId)
-        Service->>UserCouponDB: save(UserCoupon)
-        UserCouponDB-->>Service: UserCoupon
-    end
-
-    Service-->>API: void
-    API-->>User: 200 OK
-```
-
----
-
-## 5-6. 주문 기능 (Order Flow)
+## 5-5. 주문 기능 (Order Flow)
 
 **핵심 책임 객체:**
 
 | 객체 | 책임 |
 |------|------|
 | `OrderController` | HTTP 요청 수신 및 UseCase 위임 |
-| `AuthenticationService` | 헤더 기반 인증 (사용자 조회, 비밀번호 매칭) |
-| `OrderCreateService` | 주문 생성 오케스트레이션 (재고 확인, 쿠폰 적용, 스냅샷) |
-| `OrderCancelService` | 주문 취소 처리 (상태 검증, 재고/쿠폰 복원) |
+| `UserService` | 헤더 기반 인증 (사용자 조회, 비밀번호 매칭) |
+| `OrderCreateService` | 주문 생성 오케스트레이션 (재고 확인, 스냅샷) |
+| `OrderCancelService` | 주문 취소 처리 (상태 검증, 재고 복원) |
 | `ProductRepository` | 재고 확인 및 차감 |
-| `CouponRepository` | 쿠폰 적용 및 복원 |
 | `OrderRepository` | 주문 데이터 영속화 |
 
 ### Scenario 1 — 주문 생성 (Create Order)
@@ -544,13 +456,12 @@ sequenceDiagram
     autonumber
     actor User as 👤 User
     participant API as 🌐 OrderController
-    participant Auth as 🔐 AuthenticationService
+    participant Auth as 🔐 UserService
     participant Service as 🛒 OrderCreateService
     participant ProductDB as 💾 ProductRepository
-    participant CouponDB as 💾 CouponRepository
     participant OrderDB as 💾 OrderRepository
 
-    User->>API: POST /api/v1/orders (Header: X-Loopers-LoginId, X-Loopers-LoginPw, Body: items, couponId, deliveryInfo, paymentMethod)
+    User->>API: POST /api/v1/orders (Header: X-Loopers-LoginId, X-Loopers-LoginPw, Body: items, deliveryInfo, paymentMethod)
 
     rect rgb(255, 230, 230)
         Note right of API: [책임 1] 헤더 기반 인증
@@ -584,25 +495,9 @@ sequenceDiagram
         end
     end
 
-    rect rgb(255, 250, 205)
-        Note right of Service: [책임 3] 쿠폰 적용 (선택)
-        alt 쿠폰 사용 요청
-            Service->>CouponDB: findUserCoupon(userId, couponId)
-            alt 쿠폰 없음 또는 사용 불가
-                CouponDB-->>Service: 검증 실패
-                Service-->>API: throw IllegalArgumentException("사용할 수 없는 쿠폰입니다.")
-                API-->>User: 400 Bad Request
-            else 쿠폰 사용 가능
-                CouponDB-->>Service: UserCoupon
-                Service->>Service: userCoupon.use() — 사용 처리
-                Service->>CouponDB: save(userCoupon)
-            end
-        end
-    end
-
     rect rgb(255, 240, 245)
-        Note right of Service: [책임 4] 결제 금액 검증
-        Service->>Service: calculateTotalAmount(items, discount)
+        Note right of Service: [책임 3] 결제 금액 검증
+        Service->>Service: calculateTotalAmount(items)
         Service->>Service: verifyPaymentAmount(calculated, requested)
         alt 금액 불일치
             Service-->>API: throw IllegalArgumentException("결제 금액이 일치하지 않습니다.")
@@ -611,7 +506,7 @@ sequenceDiagram
     end
 
     rect rgb(240, 255, 240)
-        Note right of Service: [책임 5] 주문 생성 및 스냅샷 저장
+        Note right of Service: [책임 4] 주문 생성 및 스냅샷 저장
         Service->>Service: Order.create(userId, items, totalAmount, deliveryInfo)
         Service->>Service: OrderSnapshot.capture(order, products) — 주문 시점 상품 정보 보존
         Service->>OrderDB: save(Order + OrderItems + OrderSnapshot)
@@ -629,11 +524,10 @@ sequenceDiagram
     autonumber
     actor User as 👤 User
     participant API as 🌐 OrderController
-    participant Auth as 🔐 AuthenticationService
+    participant Auth as 🔐 UserService
     participant Service as 🛒 OrderCancelService
     participant OrderDB as 💾 OrderRepository
     participant ProductDB as 💾 ProductRepository
-    participant CouponDB as 💾 CouponRepository
 
     User->>API: POST /api/v1/orders/{orderId}/cancel (Header: X-Loopers-LoginId, X-Loopers-LoginPw)
 
@@ -680,18 +574,8 @@ sequenceDiagram
         end
     end
 
-    rect rgb(255, 250, 205)
-        Note right of Service: [책임 4] 쿠폰 복원 (사용한 경우)
-        alt 쿠폰 사용 주문
-            Service->>CouponDB: findUserCoupon(userId, couponId)
-            CouponDB-->>Service: UserCoupon
-            Service->>Service: userCoupon.restore() — 사용 취소
-            Service->>CouponDB: save(userCoupon)
-        end
-    end
-
     rect rgb(240, 255, 240)
-        Note right of Service: [책임 5] 주문 상태 변경
+        Note right of Service: [책임 4] 주문 상태 변경
         Service->>Service: order.cancel() — 상태를 '취소'로 변경
         Service->>OrderDB: save(order)
         OrderDB-->>Service: Order
