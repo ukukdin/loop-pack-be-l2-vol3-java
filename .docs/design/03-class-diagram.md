@@ -32,313 +32,282 @@ Interfaces → Application → Domain ← Infrastructure
 
 ## 6-1. 전체 아키텍처 클래스 다이어그램
 
-> 레이어 간 의존 방향과 모든 클래스의 관계를 한눈에 보여줍니다.
+> 다이어그램이 크므로 **상위 레이어**(Interfaces → Application)와 **하위 레이어**(Domain ← Infrastructure)로 나눠서 보여줍니다.
+
+### Part A. Interfaces → Application (요청 흐름)
+
+> Controller가 UseCase 인터페이스에 의존하고, UserService가 이를 **실체화(Realization)** 합니다.
+
+```mermaid
+classDiagram
+    direction LR
+
+    %% ═══════════════════════════════════════
+    %% Interfaces Layer
+    %% ═══════════════════════════════════════
+
+    class UserController {
+        <<RestController>>
+        -RegisterUseCase registerUseCase
+        -AuthenticationUseCase authenticationUseCase
+        -UserQueryUseCase userQueryUseCase
+        -PasswordUpdateUseCase passwordUpdateUseCase
+        +register(UserRegisterRequest) ResponseEntity~Void~
+        +getMyInfo(String, String) ResponseEntity~UserInfoResponse~
+        +updatePassword(String, String, PasswordUpdateRequest) ResponseEntity~Void~
+    }
+
+    class UserRegisterRequest {
+        <<record>>
+        -String loginId
+        -String password
+        -String name
+        -LocalDate birthday
+        -String email
+    }
+
+    class UserInfoResponse {
+        <<record>>
+        -String loginId
+        -String name
+        -String birthday
+        -String email
+        +from(UserQueryUseCase.UserInfoResponse)$ UserInfoResponse
+    }
+
+    class PasswordUpdateRequest {
+        <<record>>
+        -String currentPassword
+        -String newPassword
+    }
+
+    %% ═══════════════════════════════════════
+    %% Application Layer
+    %% ═══════════════════════════════════════
+
+    class RegisterUseCase {
+        <<interface>>
+        +register(String, String, String, LocalDate, String) void
+    }
+
+    class AuthenticationUseCase {
+        <<interface>>
+        +authenticate(UserId, String) void
+    }
+
+    class UserQueryUseCase {
+        <<interface>>
+        +getUserInfo(UserId) UserInfoResponse
+    }
+
+    class PasswordUpdateUseCase {
+        <<interface>>
+        +updatePassword(UserId, String, String) void
+    }
+
+    class UserService {
+        <<Service>>
+        -UserRepository userRepository
+        -PasswordEncoder passwordEncoder
+        +register(String, String, String, LocalDate, String) void
+        +authenticate(UserId, String) void
+        +getUserInfo(UserId) UserInfoResponse
+        +updatePassword(UserId, String, String) void
+        -findUser(UserId) User
+        -maskName(String) String
+    }
+
+    %% --- 의존 (Dependency): Controller → UseCase ---
+    UserController ..> RegisterUseCase : «uses»
+    UserController ..> AuthenticationUseCase : «uses»
+    UserController ..> UserQueryUseCase : «uses»
+    UserController ..> PasswordUpdateUseCase : «uses»
+
+    %% --- 의존 (Dependency): Controller → DTO ---
+    UserController ..> UserRegisterRequest
+    UserController ..> PasswordUpdateRequest
+    UserController ..> UserInfoResponse
+
+    %% --- 실체화 (Realization): Service ── UseCase ---
+    UserService ..|> RegisterUseCase : «implements»
+    UserService ..|> AuthenticationUseCase : «implements»
+    UserService ..|> UserQueryUseCase : «implements»
+    UserService ..|> PasswordUpdateUseCase : «implements»
+
+    %% --- DTO 변환 ---
+    UserInfoResponse ..> UserQueryUseCase : from() 변환
+```
+
+### Part B. Domain ← Infrastructure (핵심 도메인 + 어댑터)
+
+> Domain의 포트(interface)를 Infrastructure가 **실체화(Realization)** 합니다. User 애그리거트는 Value Object를 **합성(Composition)** 합니다.
 
 ```mermaid
 classDiagram
     direction TB
 
     %% ═══════════════════════════════════════
-    %% Interfaces Layer (Presentation)
+    %% Application (연결점)
     %% ═══════════════════════════════════════
 
-    namespace Interfaces {
-        class UserController {
-            <<RestController>>
-            -RegisterUseCase registerUseCase
-            -AuthenticationUseCase authenticationUseCase
-            -UserQueryUseCase userQueryUseCase
-            -PasswordUpdateUseCase passwordUpdateUseCase
-            +register(UserRegisterRequest) ResponseEntity~Void~
-            +getMyInfo(String loginId, String loginPw) ResponseEntity~UserInfoResponse~
-            +updatePassword(String loginId, String loginPw, PasswordUpdateRequest) ResponseEntity~Void~
-        }
-
-        class UserRegisterRequest {
-            <<record>>
-            -String loginId
-            -String password
-            -String name
-            -LocalDate birthday
-            -String email
-        }
-
-        class UserInfoResponse {
-            <<record>>
-            -String loginId
-            -String name
-            -String birthday
-            -String email
-            +from(UserQueryUseCase.UserInfoResponse)$ UserInfoResponse
-        }
-
-        class PasswordUpdateRequest {
-            <<record>>
-            -String currentPassword
-            -String newPassword
-        }
-
-        class GlobalExceptionHandler {
-            <<RestControllerAdvice>>
-            +handleCoreException(CoreException) ResponseEntity
-            +handleIllegalArgumentException(IllegalArgumentException) ResponseEntity
-            +handleValidationException(MethodArgumentNotValidException) ResponseEntity
-            +handleMissingHeaderException(MissingRequestHeaderException) ResponseEntity
-            +handleException(Exception) ResponseEntity
-        }
+    class UserService {
+        <<Service>>
+        -UserRepository userRepository
+        -PasswordEncoder passwordEncoder
     }
 
     %% ═══════════════════════════════════════
-    %% Application Layer (Use Cases)
+    %% Domain Layer
     %% ═══════════════════════════════════════
 
-    namespace Application {
-        class RegisterUseCase {
-            <<interface>>
-            +register(String loginId, String name, String rawPassword, LocalDate birthday, String email) void
-        }
+    class User {
+        <<Aggregate Root>>
+        -Long id
+        -UserId userId
+        -UserName userName
+        -String encodedPassword
+        -Birthday birth
+        -Email email
+        -WrongPasswordCount wrongPasswordCount
+        -LocalDateTime createdAt
+        +register(...)$ User
+        +reconstitute(...)$ User
+        +matchesPassword(Password, PasswordMatchChecker) boolean
+        +changePassword(String) User
+    }
 
-        class AuthenticationUseCase {
-            <<interface>>
-            +authenticate(UserId userId, String rawPassword) void
-        }
+    class PasswordMatchChecker {
+        <<interface>>
+        <<FunctionalInterface>>
+        +matches(String, String) boolean
+    }
 
-        class UserQueryUseCase {
-            <<interface>>
-            +getUserInfo(UserId userId) UserInfoResponse
-        }
+    class UserId {
+        <<Value Object>>
+        -String value
+        +of(String)$ UserId
+    }
 
-        class PasswordUpdateUseCase {
-            <<interface>>
-            +updatePassword(UserId userId, String currentRawPassword, String newRawPassword) void
-        }
+    class UserName {
+        <<Value Object>>
+        -String value
+        +of(String)$ UserName
+    }
 
-        class UserService {
-            <<Service>>
-            -UserRepository userRepository
-            -PasswordEncoder passwordEncoder
-            +register(String, String, String, LocalDate, String) void
-            +authenticate(UserId, String) void
-            +getUserInfo(UserId) UserInfoResponse
-            +updatePassword(UserId, String, String) void
-            -findUser(UserId) User
-            -maskName(String) String
-        }
+    class Password {
+        <<Value Object>>
+        -String value
+        +of(String, LocalDate)$ Password
+    }
+
+    class Email {
+        <<Value Object>>
+        -String value
+        +of(String)$ Email
+    }
+
+    class Birthday {
+        <<Value Object>>
+        -LocalDate value
+        +of(LocalDate)$ Birthday
+    }
+
+    class WrongPasswordCount {
+        <<Value Object>>
+        -int value
+        +init()$ WrongPasswordCount
+        +of(int)$ WrongPasswordCount
+        +increment() WrongPasswordCount
+        +reset() WrongPasswordCount
+        +isLocked() boolean
+    }
+
+    class UserRepository {
+        <<interface>>
+        <<Domain Port>>
+        +save(User) User
+        +findById(UserId) Optional~User~
+        +existsById(UserId) boolean
+    }
+
+    class PasswordEncoder {
+        <<interface>>
+        <<Domain Port>>
+        +encrypt(String) String
+        +matches(String, String) boolean
     }
 
     %% ═══════════════════════════════════════
-    %% Domain Layer (Core Business Logic)
+    %% Infrastructure Layer
     %% ═══════════════════════════════════════
 
-    namespace Domain {
-        class User {
-            <<Aggregate Root>>
-            -Long id
-            -UserId userId
-            -UserName userName
-            -String encodedPassword
-            -Birthday birth
-            -Email email
-            -WrongPasswordCount wrongPasswordCount
-            -LocalDateTime createdAt
-            +register(UserId, UserName, String, Birthday, Email, WrongPasswordCount, LocalDateTime)$ User
-            +reconstitute(Long, UserId, UserName, String, Birthday, Email, WrongPasswordCount, LocalDateTime)$ User
-            +matchesPassword(Password, PasswordMatchChecker) boolean
-            +changePassword(String) User
-        }
-
-        class PasswordMatchChecker {
-            <<interface>>
-            <<FunctionalInterface>>
-            +matches(String rawPassword, String encodedPassword) boolean
-        }
-
-        class UserId {
-            <<Value Object>>
-            -String value
-            +of(String value)$ UserId
-            +getValue() String
-        }
-
-        class UserName {
-            <<Value Object>>
-            -String value
-            +of(String value)$ UserName
-            +getValue() String
-        }
-
-        class Password {
-            <<Value Object>>
-            -String value
-            +of(String rawPassword, LocalDate birthday)$ Password
-            -containsBirthday(String, LocalDate)$ boolean
-            +getValue() String
-        }
-
-        class Email {
-            <<Value Object>>
-            -String value
-            +of(String value)$ Email
-            +getValue() String
-        }
-
-        class Birthday {
-            <<Value Object>>
-            -LocalDate value
-            +of(LocalDate value)$ Birthday
-            +getValue() LocalDate
-        }
-
-        class WrongPasswordCount {
-            <<Value Object>>
-            -int value
-            +init()$ WrongPasswordCount
-            +of(int count)$ WrongPasswordCount
-            +increment() WrongPasswordCount
-            +reset() WrongPasswordCount
-            +isLocked() boolean
-            +getValue() int
-        }
-
-        class UserRepository {
-            <<interface>>
-            +save(User user) User
-            +findById(UserId userId) Optional~User~
-            +existsById(UserId userId) boolean
-        }
-
-        class PasswordEncoder {
-            <<interface>>
-            +encrypt(String rawPassword) String
-            +matches(String rawPassword, String encodedPassword) boolean
-        }
+    class UserRepositoryImpl {
+        <<Repository>>
+        -UserJpaRepository userJpaRepository
+        +save(User) User
+        +findById(UserId) Optional~User~
+        +existsById(UserId) boolean
+        -toEntity(User) UserJpaEntity
+        -toDomain(UserJpaEntity) User
     }
 
-    %% ═══════════════════════════════════════
-    %% Infrastructure Layer (Adapters)
-    %% ═══════════════════════════════════════
-
-    namespace Infrastructure {
-        class UserRepositoryImpl {
-            <<Repository>>
-            -UserJpaRepository userJpaRepository
-            +save(User user) User
-            +findById(UserId userId) Optional~User~
-            +existsById(UserId userId) boolean
-            -toEntity(User user) UserJpaEntity
-            -toDomain(UserJpaEntity entity) User
-        }
-
-        class UserJpaRepository {
-            <<interface>>
-            +findByUserId(String userId) Optional~UserJpaEntity~
-            +existsByUserId(String userId) boolean
-        }
-
-        class UserJpaEntity {
-            <<Entity>>
-            -Long id
-            -String userId
-            -String encodedPassword
-            -String username
-            -LocalDate birthday
-            -String email
-            -LocalDateTime createdAt
-        }
-
-        class Sha256PasswordEncoder {
-            <<Component>>
-            +encrypt(String rawPassword) String
-            +matches(String rawPassword, String encodedPassword) boolean
-            -generateSalt() String
-            -sha256(String input) String
-        }
-
-        class JpaRepository_T_ID_ {
-            <<interface>>
-            <<Spring Data>>
-        }
+    class UserJpaRepository {
+        <<interface>>
+        <<Spring Data JPA>>
+        +findByUserId(String) Optional~UserJpaEntity~
+        +existsByUserId(String) boolean
     }
 
-    %% ═══════════════════════════════════════
-    %% Error Handling (Cross-cutting)
-    %% ═══════════════════════════════════════
-
-    namespace ErrorHandling {
-        class CoreException {
-            -ErrorType errorType
-            -String customMessage
-            +CoreException(ErrorType)
-            +CoreException(ErrorType, String)
-            +getErrorType() ErrorType
-        }
-
-        class ErrorType {
-            <<enumeration>>
-            INTERNAL_ERROR
-            BAD_REQUEST
-            NOT_FOUND
-            CONFLICT
-            -HttpStatus status
-            -String code
-            -String message
-        }
+    class UserJpaEntity {
+        <<Entity>>
+        -Long id
+        -String userId
+        -String encodedPassword
+        -String username
+        -LocalDate birthday
+        -String email
+        -LocalDateTime createdAt
     }
 
-    %% ═══════════════════════════════════════
-    %% 관계 정의 (Relationships)
-    %% ═══════════════════════════════════════
+    class JpaRepository~T_ID~ {
+        <<interface>>
+        <<Spring Data>>
+    }
 
-    %% --- Interfaces → Application (의존) ---
-    UserController ..> RegisterUseCase : «uses»
-    UserController ..> AuthenticationUseCase : «uses»
-    UserController ..> UserQueryUseCase : «uses»
-    UserController ..> PasswordUpdateUseCase : «uses»
-    UserController ..> UserRegisterRequest : «uses»
-    UserController ..> PasswordUpdateRequest : «uses»
-    UserController ..> UserInfoResponse : «creates»
-
-    %% --- Application: 실체화 (Realization) ---
-    UserService ..|> RegisterUseCase : «implements»
-    UserService ..|> AuthenticationUseCase : «implements»
-    UserService ..|> UserQueryUseCase : «implements»
-    UserService ..|> PasswordUpdateUseCase : «implements»
+    class Sha256PasswordEncoder {
+        <<Component>>
+        +encrypt(String) String
+        +matches(String, String) boolean
+        -generateSalt() String
+        -sha256(String) String
+    }
 
     %% --- Application → Domain (연관) ---
     UserService --> UserRepository : -userRepository
     UserService --> PasswordEncoder : -passwordEncoder
     UserService ..> User : «uses»
 
-    %% --- Domain: 합성 (Composition) - 생명주기 종속 ---
+    %% --- 합성 (Composition): User ◆── Value Objects ---
     User *-- "1" UserId : -userId
     User *-- "1" UserName : -userName
     User *-- "1" Birthday : -birth
     User *-- "1" Email : -email
     User *-- "1" WrongPasswordCount : -wrongPasswordCount
 
-    %% --- Domain: 의존 (Dependency) - 메서드에서만 사용 ---
-    User ..> Password : register/updatePassword 시 검증용
-    User --> PasswordMatchChecker : matchesPassword()
+    %% --- 의존 (Dependency): 메서드에서만 사용 ---
+    User ..> Password : 생성/변경 시 검증
+    User ..> PasswordMatchChecker : matchesPassword()
 
-    %% --- Infrastructure: 실체화 (Realization) ---
+    %% --- 실체화 (Realization): Infrastructure → Domain Port ---
     UserRepositoryImpl ..|> UserRepository : «implements»
     Sha256PasswordEncoder ..|> PasswordEncoder : «implements»
 
-    %% --- Infrastructure: 일반화 (Generalization) ---
-    UserJpaRepository --|> JpaRepository_T_ID_ : «extends»
+    %% --- 일반화 (Generalization): JPA 상속 ---
+    UserJpaRepository --|> JpaRepository~T_ID~ : «extends»
 
-    %% --- Infrastructure: 연관/의존 ---
-    UserRepositoryImpl --> UserJpaRepository : -userJpaRepository
+    %% --- 연관/의존: Infrastructure 내부 ---
+    UserRepositoryImpl --> "1" UserJpaRepository : -userJpaRepository
     UserRepositoryImpl ..> UserJpaEntity : toEntity() / toDomain()
-    UserRepositoryImpl ..> User : 도메인 변환
-
-    %% --- Error Handling ---
-    CoreException --> ErrorType : -errorType
-    CoreException --|> RuntimeException : «extends»
-    GlobalExceptionHandler ..> CoreException : «handles»
-
-    %% --- DTO 변환 ---
-    UserInfoResponse ..> UserQueryUseCase : from() 변환
 ```
 
 ---
