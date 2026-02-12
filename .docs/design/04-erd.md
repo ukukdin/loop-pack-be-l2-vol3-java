@@ -115,7 +115,7 @@ erDiagram
 
 ## 7-5. 향후 확장 ERD (미래 목표)
 
-시퀀스 다이어그램 5-2, 5-3에서 설계한 브랜드/상품/주문/쿠폰 기능 구현 시 예상되는 테이블 구조입니다.
+시퀀스 다이어그램 5-2 ~ 5-6에서 설계한 브랜드/상품/좋아요/쿠폰/주문 기능 구현 시 예상되는 테이블 구조입니다.
 
 ```mermaid
 erDiagram
@@ -183,8 +183,16 @@ erDiagram
     ORDERS {
         BIGINT id PK
         BIGINT user_id FK
-        INT total_amount
-        VARCHAR status
+        BIGINT coupon_id FK "NULL, 사용한 쿠폰"
+        VARCHAR receiver_name "NOT NULL, 수령인"
+        VARCHAR address "NOT NULL, 배송지"
+        VARCHAR request "NULL, 배송 요청사항"
+        VARCHAR payment_method "NOT NULL, 결제수단"
+        INT total_amount "NOT NULL, 총 주문금액"
+        INT discount_amount "NOT NULL, 할인금액 (DEFAULT 0)"
+        INT payment_amount "NOT NULL, 최종 결제금액"
+        VARCHAR status "NOT NULL, 주문상태"
+        DATE desired_delivery_date "NULL, 도착희망일"
         DATETIME created_at
         DATETIME updated_at
     }
