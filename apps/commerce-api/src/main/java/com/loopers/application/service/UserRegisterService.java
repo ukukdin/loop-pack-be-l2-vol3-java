@@ -32,19 +32,19 @@ public class UserRegisterService implements RegisterUseCase {
         Password password = Password.of(rawPassword, birthday);
         String encodedPassword = passwordEncoder.encrypt(password.getValue());
 
-        try {
-            User user = User.register(
-                    userId,
-                    userName,
-                    encodedPassword,
-                    birth,
-                    userEmail,
-                    WrongPasswordCount.init(),
-                    LocalDateTime.now()
-            );
-            userRepository.save(user);
-        } catch (DataIntegrityViolationException ex) {
-            throw new IllegalArgumentException("이미 사용중인 ID 입니다.", ex);
+        if (userRepository.existsById(userId)) {
+            throw new IllegalArgumentException("이미 사용중인 ID 입니다.");
         }
+
+        User user = User.register(
+                userId,
+                userName,
+                encodedPassword,
+                birth,
+                userEmail,
+                WrongPasswordCount.init(),
+                LocalDateTime.now()
+        );
+        userRepository.save(user);
     }
 }
