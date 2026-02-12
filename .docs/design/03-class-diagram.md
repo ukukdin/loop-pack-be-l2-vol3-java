@@ -1,14 +1,20 @@
-# 6. 도메인 객체 설계 (Class Diagram)
+# 헥사고날 아키텍처 - User 도메인 설계
+
+## 아키텍처 개요
 
 클린 아키텍처 기반으로 **도메인 계층이 어떤 외부 기술에도 의존하지 않도록** 설계했습니다.
 
-```
-Interfaces → Application → Domain ← Infrastructure
+```mermaid
+graph LR
+    I[Interfaces] --> A[Application] --> D[Domain]
+    I_F[Infrastructure] -.-> D
+    style D fill:#fffde7,stroke:#fdd835,color:black
+    style A fill:#e8f5e9,stroke:#43a047,color:black
+    style I fill:#e3f2fd,stroke:#1e88e5,color:black
+    style I_F fill:#ede7f6,stroke:#5e35b1,color:black
 ```
 
-> UML 표기법 참고: [UML 클래스 다이어그램](https://djcho.github.io/etc/etc-uml-classdiagram/)
-
-### UML 관계 범례
+## UML 관계 범례
 
 | 관계 | Mermaid 표기 | 설명 |
 |---|---|---|
@@ -19,22 +25,15 @@ Interfaces → Application → Domain ← Infrastructure
 | 합성(Composition) | `*--` 채워진 다이아몬드 | 강한 소유 (생명주기 종속) |
 | 집합(Aggregation) | `o--` 빈 다이아몬드 | 약한 소유 (독립 생명주기) |
 
-### 접근 제어자
-
-| 기호 | 접근 제어자 |
-|---|---|
-| `+` | public |
-| `-` | private |
-| `#` | protected |
-| `~` | package-private |
-
 ---
 
-## 6-1. 전체 아키텍처 클래스 다이어그램
+## 전체 아키텍처 클래스 다이어그램
 
 > 다이어그램이 크므로 **상위 레이어**(Interfaces → Application)와 **하위 레이어**(Domain ← Infrastructure)로 나눠서 보여줍니다.
 
-### Part A. Interfaces → Application (요청 흐름)
+---
+
+## Part A. Interfaces → Application (요청 흐름)
 
 > Controller가 UseCase 인터페이스에 의존하고, UserService가 이를 **실체화(Realization)** 합니다.
 
@@ -45,18 +44,16 @@ classDiagram
     %% ═══════════════════════════════════════
     %% Interfaces Layer
     %% ═══════════════════════════════════════
-
     class UserController {
         <<RestController>>
         -RegisterUseCase registerUseCase
         -AuthenticationUseCase authenticationUseCase
         -UserQueryUseCase userQueryUseCase
         -PasswordUpdateUseCase passwordUpdateUseCase
-        +register(UserRegisterRequest) ResponseEntity~Void~
-        +getMyInfo(String, String) ResponseEntity~UserInfoResponse~
-        +updatePassword(String, String, PasswordUpdateRequest) ResponseEntity~Void~
+        +register(UserRegisterRequest) ResponseEntity
+        +getMyInfo(String, String) ResponseEntity
+        +updatePassword(String, String, PasswordUpdateRequest) ResponseEntity
     }
-
     class UserRegisterRequest {
         <<record>>
         -String loginId
@@ -65,16 +62,14 @@ classDiagram
         -LocalDate birthday
         -String email
     }
-
     class UserInfoResponse {
         <<record>>
         -String loginId
         -String name
         -String birthday
         -String email
-        +from(UserQueryUseCase.UserInfoResponse)$ UserInfoResponse
+        +from(UserQueryUseCase) UserInfoResponse$
     }
-
     class PasswordUpdateRequest {
         <<record>>
         -String currentPassword
@@ -84,27 +79,29 @@ classDiagram
     %% ═══════════════════════════════════════
     %% Application Layer
     %% ═══════════════════════════════════════
-
     class RegisterUseCase {
         <<interface>>
         +register(String, String, String, LocalDate, String) void
     }
-
     class AuthenticationUseCase {
         <<interface>>
         +authenticate(UserId, String) void
     }
-
     class UserQueryUseCase {
         <<interface>>
         +getUserInfo(UserId) UserInfoResponse
     }
-
+    class UserQueryUseCase_UserInfoResponse {
+        <<record>>
+        -String loginId
+        -String maskedName
+        -LocalDate birthday
+        -String email
+    }
     class PasswordUpdateUseCase {
         <<interface>>
         +updatePassword(UserId, String, String) void
     }
-
     class UserService {
         <<Service>>
         -UserRepository userRepository
@@ -118,27 +115,64 @@ classDiagram
     }
 
     %% --- 의존 (Dependency): Controller → UseCase ---
-    UserController ..> RegisterUseCase : «uses»
-    UserController ..> AuthenticationUseCase : «uses»
-    UserController ..> UserQueryUseCase : «uses»
-    UserController ..> PasswordUpdateUseCase : «uses»
+    UserController ..> RegisterUseCase : uses
+    UserController ..> AuthenticationUseCase : uses
+    UserController ..> UserQueryUseCase : uses
+    UserController ..> PasswordUpdateUseCase : uses
 
     %% --- 의존 (Dependency): Controller → DTO ---
     UserController ..> UserRegisterRequest
     UserController ..> PasswordUpdateRequest
     UserController ..> UserInfoResponse
 
-    %% --- 실체화 (Realization): Service ── UseCase ---
-    UserService ..|> RegisterUseCase : «implements»
-    UserService ..|> AuthenticationUseCase : «implements»
-    UserService ..|> UserQueryUseCase : «implements»
-    UserService ..|> PasswordUpdateUseCase : «implements»
+    %% --- 실체화 (Realization): Service → UseCase ---
+    UserService ..|> RegisterUseCase : implements
+    UserService ..|> AuthenticationUseCase : implements
+    UserService ..|> UserQueryUseCase : implements
+    UserService ..|> PasswordUpdateUseCase : implements
+
+    %% --- inner record ---
+    UserQueryUseCase *-- UserQueryUseCase_UserInfoResponse : inner record
 
     %% --- DTO 변환 ---
-    UserInfoResponse ..> UserQueryUseCase : from() 변환
+    UserInfoResponse ..> UserQueryUseCase_UserInfoResponse : from()
+
+    %% ═══════════════════════════════════════
+    %% Styling
+    %% ═══════════════════════════════════════
+    style UserController fill:#e3f2fd,stroke:#1e88e5,stroke-width:2px,color:#000
+    style UserRegisterRequest fill:#fffde7,stroke:#fbc02d,stroke-width:1px,color:#000
+    style UserInfoResponse fill:#fffde7,stroke:#fbc02d,stroke-width:1px,color:#000
+    style PasswordUpdateRequest fill:#fffde7,stroke:#fbc02d,stroke-width:1px,color:#000
+
+    style RegisterUseCase fill:#e8f5e9,stroke:#43a047,stroke-width:2px,color:#000
+    style AuthenticationUseCase fill:#e8f5e9,stroke:#43a047,stroke-width:2px,color:#000
+    style UserQueryUseCase fill:#e8f5e9,stroke:#43a047,stroke-width:2px,color:#000
+    style UserQueryUseCase_UserInfoResponse fill:#e8f5e9,stroke:#43a047,stroke-width:1px,color:#000
+    style PasswordUpdateUseCase fill:#e8f5e9,stroke:#43a047,stroke-width:2px,color:#000
+    style UserService fill:#c8e6c9,stroke:#2e7d32,stroke-width:3px,color:#000
 ```
 
-### Part B. Domain ← Infrastructure (핵심 도메인 + 어댑터)
+### 이 다이어그램에서 봐야 할 포인트
+
+- Controller는 `UserService`를 직접 알지 못한다. 4개의 UseCase 인터페이스만 의존하고, 구현체는 Spring이 주입한다. 이 경계가 무너지면 Controller 변경 시 Service 내부까지 영향이 번진다.
+- UseCase 4개 분리는 ISP 적용이다. `register()`만 쓰는 곳에서 `updatePassword()`를 알 필요가 없다. 단, UserService 하나가 4개를 모두 구현하므로 **인터페이스는 분리되어 있지만 구현의 응집은 유지**된다.
+
+### 설계 의도
+
+- **UseCase 인터페이스 분리 + Service 구현체 통합**: Controller는 자신이 사용하는 UseCase만 의존하고, 구현 코드의 중복(`findUser()`, `passwordEncoder` 등)은 UserService 한 곳에서 관리한다.
+- `UserQueryUseCase` 안에 `UserInfoResponse` inner record를 두어, 반환 타입이 Application 레이어에서 정의된다. Interfaces 레이어의 DTO와 분리하여 레이어 간 결합을 끊는다.
+
+### 잠재 리스크
+
+| 리스크 | 설명 | 선택지 |
+|---|---|---|
+| UserService 비대화 | 현재 4개 UseCase를 하나가 구현. 도메인이 커지면(주문, 좋아요 등) 메서드가 계속 늘어날 수 있음 | **A)** 도메인별 Service 분리 (OrderService, LikeService) **B)** 현재 User 도메인 내에서만 통합 유지하고, 다른 도메인은 별도 Service |
+| Controller에서 직접 인증 호출 | `getMyInfo()`와 `updatePassword()`에서 `authenticationUseCase.authenticate()`를 직접 호출. 인증 로직이 Controller에 노출됨 | **A)** 현행 유지 — 단순하고 명시적 **B)** Spring Interceptor/Filter로 인증을 분리하여 Controller는 비즈니스만 담당 |
+
+---
+
+## Part B. Domain ← Infrastructure (핵심 도메인 + 어댑터)
 
 > Domain의 포트(interface)를 Infrastructure가 **실체화(Realization)** 합니다. User 애그리거트는 Value Object를 **합성(Composition)** 합니다.
 
@@ -149,7 +183,6 @@ classDiagram
     %% ═══════════════════════════════════════
     %% Application (연결점)
     %% ═══════════════════════════════════════
-
     class UserService {
         <<Service>>
         -UserRepository userRepository
@@ -159,7 +192,6 @@ classDiagram
     %% ═══════════════════════════════════════
     %% Domain Layer
     %% ═══════════════════════════════════════
-
     class User {
         <<Aggregate Root>>
         -Long id
@@ -170,66 +202,47 @@ classDiagram
         -Email email
         -WrongPasswordCount wrongPasswordCount
         -LocalDateTime createdAt
-        +register(...)$ User
-        +reconstitute(...)$ User
+        +register() User$
+        +reconstitute() User$
         +matchesPassword(Password, PasswordMatchChecker) boolean
         +changePassword(String) User
     }
-
     class PasswordMatchChecker {
         <<interface>>
         <<FunctionalInterface>>
         +matches(String, String) boolean
     }
-
     class UserId {
         <<Value Object>>
         -String value
-        +of(String)$ UserId
     }
-
     class UserName {
         <<Value Object>>
         -String value
-        +of(String)$ UserName
     }
-
     class Password {
         <<Value Object>>
         -String value
-        +of(String, LocalDate)$ Password
     }
-
     class Email {
         <<Value Object>>
         -String value
-        +of(String)$ Email
     }
-
     class Birthday {
         <<Value Object>>
         -LocalDate value
-        +of(LocalDate)$ Birthday
     }
-
     class WrongPasswordCount {
         <<Value Object>>
         -int value
-        +init()$ WrongPasswordCount
-        +of(int)$ WrongPasswordCount
-        +increment() WrongPasswordCount
-        +reset() WrongPasswordCount
-        +isLocked() boolean
     }
-
     class UserRepository {
         <<interface>>
         <<Domain Port>>
         +save(User) User
-        +findById(UserId) Optional~User~
+        +findById(UserId) User?
         +existsById(UserId) boolean
     }
-
     class PasswordEncoder {
         <<interface>>
         <<Domain Port>>
@@ -240,24 +253,22 @@ classDiagram
     %% ═══════════════════════════════════════
     %% Infrastructure Layer
     %% ═══════════════════════════════════════
-
     class UserRepositoryImpl {
         <<Repository>>
+        <<Adapter>>
         -UserJpaRepository userJpaRepository
         +save(User) User
-        +findById(UserId) Optional~User~
+        +findById(UserId) User?
         +existsById(UserId) boolean
         -toEntity(User) UserJpaEntity
         -toDomain(UserJpaEntity) User
     }
-
     class UserJpaRepository {
         <<interface>>
         <<Spring Data JPA>>
-        +findByUserId(String) Optional~UserJpaEntity~
+        +findByUserId(String) UserJpaEntity?
         +existsByUserId(String) boolean
     }
-
     class UserJpaEntity {
         <<Entity>>
         -Long id
@@ -268,14 +279,13 @@ classDiagram
         -String email
         -LocalDateTime createdAt
     }
-
-    class JpaRepository~T_ID~ {
+    class JpaRepositoryBase {
         <<interface>>
         <<Spring Data>>
     }
-
     class Sha256PasswordEncoder {
         <<Component>>
+        <<Adapter>>
         +encrypt(String) String
         +matches(String, String) boolean
         -generateSalt() String
@@ -285,9 +295,9 @@ classDiagram
     %% --- Application → Domain (연관) ---
     UserService --> UserRepository : -userRepository
     UserService --> PasswordEncoder : -passwordEncoder
-    UserService ..> User : «uses»
+    UserService ..> User : uses
 
-    %% --- 합성 (Composition): User ◆── Value Objects ---
+    %% --- 합성 (Composition): User → Value Objects ---
     User *-- "1" UserId : -userId
     User *-- "1" UserName : -userName
     User *-- "1" Birthday : -birth
@@ -299,20 +309,66 @@ classDiagram
     User ..> PasswordMatchChecker : matchesPassword()
 
     %% --- 실체화 (Realization): Infrastructure → Domain Port ---
-    UserRepositoryImpl ..|> UserRepository : «implements»
-    Sha256PasswordEncoder ..|> PasswordEncoder : «implements»
+    UserRepositoryImpl ..|> UserRepository : implements
+    Sha256PasswordEncoder ..|> PasswordEncoder : implements
 
     %% --- 일반화 (Generalization): JPA 상속 ---
-    UserJpaRepository --|> JpaRepository~T_ID~ : «extends»
+    UserJpaRepository --|> JpaRepositoryBase : extends
 
     %% --- 연관/의존: Infrastructure 내부 ---
     UserRepositoryImpl --> "1" UserJpaRepository : -userJpaRepository
     UserRepositoryImpl ..> UserJpaEntity : toEntity() / toDomain()
+
+    %% ═══════════════════════════════════════
+    %% Styling
+    %% ═══════════════════════════════════════
+    
+    %% Application
+    style UserService fill:#c8e6c9,stroke:#2e7d32,stroke-width:3px,color:#000
+    
+    %% Domain - Aggregate Root
+    style User fill:#ffecb3,stroke:#ff6f00,stroke-width:3px,color:#000
+    
+    %% Domain - Value Objects
+    style UserId fill:#fff9c4,stroke:#fbc02d,stroke-width:1px,color:#000
+    style UserName fill:#fff9c4,stroke:#fbc02d,stroke-width:1px,color:#000
+    style Password fill:#fff9c4,stroke:#fbc02d,stroke-width:1px,color:#000
+    style Email fill:#fff9c4,stroke:#fbc02d,stroke-width:1px,color:#000
+    style Birthday fill:#fff9c4,stroke:#fbc02d,stroke-width:1px,color:#000
+    style WrongPasswordCount fill:#fff9c4,stroke:#fbc02d,stroke-width:1px,color:#000
+    
+    %% Domain - Ports
+    style UserRepository fill:#fffde7,stroke:#fdd835,stroke-width:2px,color:#000
+    style PasswordEncoder fill:#fffde7,stroke:#fdd835,stroke-width:2px,color:#000
+    style PasswordMatchChecker fill:#fffde7,stroke:#fdd835,stroke-width:2px,color:#000
+    
+    %% Infrastructure - Adapters
+    style UserRepositoryImpl fill:#ede7f6,stroke:#5e35b1,stroke-width:2px,color:#000
+    style Sha256PasswordEncoder fill:#ede7f6,stroke:#5e35b1,stroke-width:2px,color:#000
+    
+    %% Infrastructure - JPA
+    style UserJpaRepository fill:#eeeeee,stroke:#9e9e9e,stroke-width:1px,color:#000
+    style JpaRepositoryBase fill:#eeeeee,stroke:#9e9e9e,stroke-width:1px,color:#000
+    style UserJpaEntity fill:#eeeeee,stroke:#9e9e9e,stroke-width:1px,color:#000
 ```
+
+### 이 다이어그램에서 봐야 할 포인트
+
+- 화살표 방향에 주목: `UserService → UserRepository(interface) ← UserRepositoryImpl`. Domain Port를 사이에 두고 Application과 Infrastructure가 **서로를 직접 모르는 구조**다. 이것이 의존성 역전(DIP)의 핵심이다.
+- User가 6개의 Value Object를 합성(Composition)하고 있다. Value Object는 User 없이 독립 존재하지 않으므로 채워진 다이아몬드(`*--`)로 표현한다.
+- `PasswordMatchChecker`는 `@FunctionalInterface`다. User 도메인이 암호화 구현을 모르면서도 비밀번호 매칭을 할 수 있게 하는 전략 패턴이다.
+
+### 잠재 리스크
+
+| 리스크 | 설명 | 선택지 |
+|---|---|---|
+| 도메인 ↔ JPA 변환 비용 | `toEntity()` / `toDomain()`을 매번 호출. 엔티티가 복잡해지면 변환 로직 유지보수 부담 증가 | **A)** 현행 유지 — 도메인 순수성의 대가로 감수 **B)** MapStruct 등 매핑 라이브러리 도입 |
+| WrongPasswordCount 영속 누락 | 도메인에는 존재하지만 DB에 저장하지 않아, `toDomain()` 시 항상 0으로 복원됨 | ERD 문서의 데이터 정합성 섹션 참고 |
+| Value Object 검증이 앱 레벨에만 존재 | DB 레벨에는 `NOT NULL`과 `UNIQUE` 외에 검증 없음. 직접 SQL 실행 시 도메인 규칙 우회 가능 | **A)** 운영 DDL에 CHECK 제약 추가 **B)** DB는 저장소 역할에 한정하고, 앱 레벨 검증만으로 충분하다고 판단 |
 
 ---
 
-## 6-2. Value Objects 상세 다이어그램
+## Value Objects 상세 다이어그램
 
 > User 애그리거트가 소유하는 값 객체들의 **합성(Composition)** 관계와 검증 규칙을 보여줍니다.
 
@@ -330,8 +386,8 @@ classDiagram
         -Email email
         -WrongPasswordCount wrongPasswordCount
         -LocalDateTime createdAt
-        +register(...)$ User
-        +reconstitute(...)$ User
+        +register() User$
+        +reconstitute() User$
         +matchesPassword(Password, PasswordMatchChecker) boolean
         +changePassword(String encodedPassword) User
     }
@@ -339,74 +395,68 @@ classDiagram
     class UserId {
         <<Value Object>>
         -String value
-        +of(String)$ UserId
+        +of(String) UserId$
     }
-    note for UserId "정규식: ^[a-z0-9]{4,10}$\n4~10자, 영문 소문자+숫자"
 
     class UserName {
         <<Value Object>>
         -String value
-        +of(String)$ UserName
+        +of(String) UserName$
     }
-    note for UserName "정규식: ^[a-zA-Z0-9가-힣]{2,20}$\n2~20자, 한글/영문/숫자"
 
     class Password {
         <<Value Object>>
         -String value
-        -DateTimeFormatter FMT_YYYYMMDD$
-        -DateTimeFormatter FMT_YYMMDD$
-        -DateTimeFormatter FMT_MMDD$
-        +of(String, LocalDate)$ Password
-        -containsBirthday(String, LocalDate)$ boolean
+        +of(String, LocalDate) Password$
     }
-    note for Password "8~16자, 영문+숫자+특수문자\n생년월일 패턴 포함 불가"
 
     class Email {
         <<Value Object>>
         -String value
-        +of(String)$ Email
+        +of(String) Email$
     }
-    note for Email "이메일 형식 정규식 검증"
 
     class Birthday {
         <<Value Object>>
         -LocalDate value
-        +of(LocalDate)$ Birthday
+        +of(LocalDate) Birthday$
     }
-    note for Birthday "미래 날짜 불가\n1900-01-01 이후"
 
     class WrongPasswordCount {
         <<Value Object>>
         -int value
-        +init()$ WrongPasswordCount
-        +of(int)$ WrongPasswordCount
+        +init() WrongPasswordCount$
         +increment() WrongPasswordCount
         +reset() WrongPasswordCount
-        +isLocked() boolean
     }
-    note for WrongPasswordCount "0 이상, 5회 이상 → 잠금\n불변: increment/reset → 새 인스턴스"
 
     class PasswordMatchChecker {
         <<interface>>
         <<FunctionalInterface>>
-        +matches(String, String) boolean
     }
 
-    %% 합성 관계 (Composition) - 채워진 다이아몬드
-    %% User가 소멸하면 Value Object도 소멸
+    %% 합성 관계 (Composition)
     User *-- "1" UserId
     User *-- "1" UserName
     User *-- "1" Birthday
     User *-- "1" Email
     User *-- "1" WrongPasswordCount
 
-    %% 의존 관계 (Dependency) - 점선 화살표
-    %% register/updatePassword 메서드에서만 참조
+    %% 의존 관계 (Dependency)
     User ..> Password : 생성/변경 시 검증
 
-    %% 연관 관계 (Association) - 실선 화살표
-    %% matchesPassword() 파라미터
+    %% 연관 관계 (Association)
     User ..> PasswordMatchChecker : matchesPassword()에서 사용
+
+    %% Styling
+    style User fill:#ffecb3,stroke:#ff6f00,stroke-width:3px,color:#000
+    style UserId fill:#fff9c4,stroke:#fbc02d,stroke-width:1px,color:#000
+    style UserName fill:#fff9c4,stroke:#fbc02d,stroke-width:1px,color:#000
+    style Password fill:#fff9c4,stroke:#fbc02d,stroke-width:1px,color:#000
+    style Email fill:#fff9c4,stroke:#fbc02d,stroke-width:1px,color:#000
+    style Birthday fill:#fff9c4,stroke:#fbc02d,stroke-width:1px,color:#000
+    style WrongPasswordCount fill:#fff9c4,stroke:#fbc02d,stroke-width:1px,color:#000
+    style PasswordMatchChecker fill:#fffde7,stroke:#fdd835,stroke-width:2px,color:#000
 ```
 
 ### Value Object 검증 규칙
@@ -420,15 +470,9 @@ classDiagram
 | `Birthday` | not null, 미래 불가, 1900년 이후 | `생년월일은 미래 날짜일 수 없습니다.` |
 | `WrongPasswordCount` | 음수 불가, 5회 이상 잠금 | `비밀번호 오류 횟수는 음수일 수 없습니다.` |
 
-### 설계 결정
-
-- **`User.register()`**: id = null로 생성 (영속화 전 신규 객체)
-- **`User.reconstitute()`**: DB에서 복원할 때 사용 (id 포함)
-- **`User.changePassword()`**: 새로운 User 인스턴스 반환 (불변성 유지)
-
 ---
 
-## 6-3. Infrastructure 계층 상세
+## Infrastructure 계층 상세
 
 > 도메인 인터페이스를 **실체화(Realization)** 하는 인프라 어댑터와 JPA 엔티티 매핑을 보여줍니다.
 
@@ -436,15 +480,13 @@ classDiagram
 classDiagram
     direction TB
 
-    %% Domain Interfaces (Port)
     class UserRepository {
         <<interface>>
         <<Domain Port>>
         +save(User) User
-        +findById(UserId) Optional~User~
+        +findById(UserId) User?
         +existsById(UserId) boolean
     }
-
     class PasswordEncoder {
         <<interface>>
         <<Domain Port>>
@@ -452,18 +494,16 @@ classDiagram
         +matches(String, String) boolean
     }
 
-    %% Infrastructure Adapters
     class UserRepositoryImpl {
         <<Repository>>
         <<Adapter>>
         -UserJpaRepository userJpaRepository
         +save(User) User
-        +findById(UserId) Optional~User~
+        +findById(UserId) User?
         +existsById(UserId) boolean
         -toEntity(User) UserJpaEntity
         -toDomain(UserJpaEntity) User
     }
-
     class Sha256PasswordEncoder {
         <<Component>>
         <<Adapter>>
@@ -473,23 +513,16 @@ classDiagram
         -sha256(String) String
     }
 
-    %% JPA
     class UserJpaRepository {
         <<interface>>
         <<Spring Data JPA>>
-        +findByUserId(String) Optional~UserJpaEntity~
+        +findByUserId(String) UserJpaEntity?
         +existsByUserId(String) boolean
     }
-
-    class JpaRepository~T_ID~ {
+    class JpaRepositoryBase {
         <<interface>>
         <<Spring Data>>
-        +save(T) T
-        +findById(ID) Optional~T~
-        +existsById(ID) boolean
-        +deleteById(ID) void
     }
-
     class UserJpaEntity {
         <<Entity>>
         -Long id
@@ -499,38 +532,51 @@ classDiagram
         -LocalDate birthday
         -String email
         -LocalDateTime createdAt
-        +UserJpaEntity(String, String, String, LocalDate, String, LocalDateTime)
     }
 
-    %% Domain Model (참조용)
     class User {
         <<Aggregate Root>>
     }
 
     %% === 관계 ===
+    %% 실체화 (Realization)
+    UserRepositoryImpl ..|> UserRepository : implements
+    Sha256PasswordEncoder ..|> PasswordEncoder : implements
 
-    %% 실체화 (Realization): 점선 + 빈 삼각형
-    UserRepositoryImpl ..|> UserRepository : «implements»
-    Sha256PasswordEncoder ..|> PasswordEncoder : «implements»
+    %% 일반화 (Generalization)
+    UserJpaRepository --|> JpaRepositoryBase : extends
 
-    %% 일반화 (Generalization): 실선 + 빈 삼각형
-    UserJpaRepository --|> JpaRepository~T_ID~ : «extends»
-
-    %% 연관 (Association): 필드 참조
+    %% 연관 (Association)
     UserRepositoryImpl --> "1" UserJpaRepository : -userJpaRepository
 
-    %% 의존 (Dependency): 메서드에서 변환 시 사용
+    %% 의존 (Dependency)
     UserRepositoryImpl ..> UserJpaEntity : toEntity() / toDomain()
     UserRepositoryImpl ..> User : 도메인 모델 변환
+
+    %% Styling
+    style UserRepository fill:#fffde7,stroke:#fdd835,stroke-width:2px,color:#000
+    style PasswordEncoder fill:#fffde7,stroke:#fdd835,stroke-width:2px,color:#000
+    style UserRepositoryImpl fill:#ede7f6,stroke:#5e35b1,stroke-width:2px,color:#000
+    style Sha256PasswordEncoder fill:#ede7f6,stroke:#5e35b1,stroke-width:2px,color:#000
+    style UserJpaRepository fill:#eeeeee,stroke:#9e9e9e,stroke-width:1px,color:#000
+    style JpaRepositoryBase fill:#eeeeee,stroke:#9e9e9e,stroke-width:1px,color:#000
+    style UserJpaEntity fill:#eeeeee,stroke:#9e9e9e,stroke-width:1px,color:#000
+    style User fill:#ffecb3,stroke:#ff6f00,stroke-width:3px,color:#000
 ```
 
-**변환 흐름**: `User` → `toEntity()` → `UserJpaEntity` → JPA save → `toDomain()` → `User`
+### Entity Mapping
 
-**암호화 형식**: `salt:hash` (SHA-256 + 16byte Base64 Salt)
+```java
+// Domain → Persistence
+UserRepositoryImpl.toEntity(User) → UserJpaEntity
+
+// Persistence → Domain  
+UserRepositoryImpl.toDomain(UserJpaEntity) → User
+```
 
 ---
 
-## 6-4. 에러 처리 다이어그램
+## 에러 처리 다이어그램
 
 ```mermaid
 classDiagram
@@ -538,13 +584,12 @@ classDiagram
 
     class GlobalExceptionHandler {
         <<RestControllerAdvice>>
-        +handleCoreException(CoreException) ResponseEntity~Map~
-        +handleIllegalArgumentException(IllegalArgumentException) ResponseEntity~Map~
-        +handleValidationException(MethodArgumentNotValidException) ResponseEntity~Map~
-        +handleMissingHeaderException(MissingRequestHeaderException) ResponseEntity~Map~
-        +handleException(Exception) ResponseEntity~Map~
+        +handleCoreException(CoreException) ResponseEntity
+        +handleIllegalArgumentException(IllegalArgumentException) ResponseEntity
+        +handleValidationException(MethodArgumentNotValidException) ResponseEntity
+        +handleMissingHeaderException(MissingRequestHeaderException) ResponseEntity
+        +handleException(Exception) ResponseEntity
     }
-
     class CoreException {
         -ErrorType errorType
         -String customMessage
@@ -553,11 +598,6 @@ classDiagram
         +getErrorType() ErrorType
         +getCustomMessage() String
     }
-
-    class RuntimeException {
-        <<java.lang>>
-    }
-
     class ErrorType {
         <<enumeration>>
         INTERNAL_ERROR
@@ -567,323 +607,92 @@ classDiagram
         -HttpStatus status
         -String code
         -String message
-        +getStatus() HttpStatus
-        +getCode() String
-        +getMessage() String
+    }
+    class RuntimeException {
+        <<java.lang>>
     }
 
     %% 일반화 (Generalization)
-    CoreException --|> RuntimeException : «extends»
+    CoreException --|> RuntimeException : extends
 
-    %% 합성 (Composition) - ErrorType은 CoreException에 종속
+    %% 합성 (Composition)
     CoreException *-- "1" ErrorType : -errorType
 
     %% 의존 (Dependency) - 예외 핸들링
-    GlobalExceptionHandler ..> CoreException : «catches»
-    GlobalExceptionHandler ..> IllegalArgumentException : «catches»
-```
+    GlobalExceptionHandler ..> CoreException : catches
+    GlobalExceptionHandler ..> IllegalArgumentException : catches
+    GlobalExceptionHandler ..> Exception : catches
 
-### 예외 매핑 테이블
-
-| 예외 | HTTP 상태 | 발생 위치 |
-|---|---|---|
-| `CoreException` | ErrorType에 따름 | 명시적 도메인 예외 |
-| `IllegalArgumentException` | 400 | Value Object 검증, Service 비즈니스 검증 |
-| `MethodArgumentNotValidException` | 400 | DTO `@Valid` 검증 |
-| `MissingRequestHeaderException` | 400 | 필수 헤더 누락 |
-| `Exception` | 500 | 예상치 못한 서버 오류 |
-
----
-
-## 6-5. 의존성 방향 요약
-
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│  Interfaces (Controller, DTO)                                       │
-│    └─ 의존 → UseCase «interface» (Application 계층)                  │
-│    관계: 의존(Dependency) - 점선 화살표                                │
-├─────────────────────────────────────────────────────────────────────┤
-│  Application (UseCase, UserService)                                 │
-│    └─ 의존 → Domain «interface» (Repository, PasswordEncoder)       │
-│    관계: 실체화(Realization) - UseCase 구현                           │
-│          연관(Association) - Repository/Encoder 필드 참조             │
-├─────────────────────────────────────────────────────────────────────┤
-│  Domain (User, Value Objects, Interface)                            │
-│    └─ 외부 의존 없음 (순수 Java)                                      │
-│    관계: 합성(Composition) - User ↔ Value Objects                    │
-├─────────────────────────────────────────────────────────────────────┤
-│  Infrastructure (JPA, SHA-256)                                      │
-│    └─ 의존 → Domain «interface»를 구현                               │
-│    관계: 실체화(Realization) - Domain Port 구현                       │
-│          일반화(Generalization) - JpaRepository 상속                  │
-└─────────────────────────────────────────────────────────────────────┘
-```
-
-### API 엔드포인트
-
-| Method | Path | 인증 | UseCase |
-|---|---|---|---|
-| `POST` | `/api/v1/users/register` | 불필요 | `RegisterUseCase` |
-| `GET` | `/api/v1/users/me` | `X-Loopers-LoginId`, `X-Loopers-LoginPw` | `UserQueryUseCase` + `AuthenticationUseCase` |
-| `PUT` | `/api/v1/users/me/password` | `X-Loopers-LoginId`, `X-Loopers-LoginPw` | `PasswordUpdateUseCase` + `AuthenticationUseCase` |
-
----
-
-# 향후 확장 도메인 설계 (미래 목표)
-
-> `01-requirements.md`에 정의된 기능 요구사항 기반의 **미래 구현 목표**입니다.
-
-## 6-6. 전체 도메인 관계도
-
-```mermaid
-classDiagram
-    direction TB
-
-    class User {
-        <<Aggregate Root>>
-    }
-    class Brand {
-        <<Aggregate Root>>
-    }
-    class Product {
-        <<Aggregate Root>>
-    }
-    class Like {
-        <<Entity>>
-    }
-    class Order {
-        <<Aggregate Root>>
-    }
-    class OrderItem {
-        <<Entity>>
-    }
-    class OrderSnapshot {
-        <<Value Object>>
-    }
-
-    %% 연관 (Association) - 다중성 포함
-    User "1" --> "*" Like : 좋아요
-    User "1" --> "*" Order : 주문
-
-    %% 연관 (Association)
-    Brand "1" --> "*" Product : 보유 상품
-    Product "1" --> "*" Like : 좋아요 대상
-    Product "1" --> "*" OrderItem : 주문 항목
-
-    %% 합성 (Composition) - 생명주기 종속
-    Order "1" *-- "1..*" OrderItem : 주문 상세
-    Order "1" *-- "1" OrderSnapshot : 주문 시점 스냅샷
+    %% Styling
+    style GlobalExceptionHandler fill:#ffebee,stroke:#e53935,stroke-width:2px,color:#000
+    style CoreException fill:#ffcdd2,stroke:#c62828,stroke-width:2px,color:#000
+    style ErrorType fill:#ef9a9a,stroke:#b71c1c,stroke-width:1px,color:#000
+    style RuntimeException fill:#eeeeee,stroke:#9e9e9e,stroke-width:1px,color:#000
 ```
 
 ---
 
-## 6-7. Brand 도메인
+## 전체 아키텍처 요약
 
-```mermaid
-classDiagram
-    class Brand {
-        <<Aggregate Root>>
-        -Long id
-        -BrandName name
-        -String description
-        -LocalDateTime createdAt
-        +register(name, description)$ Brand
-        +reconstitute(...)$ Brand
-        +update(BrandName, String) Brand
-    }
-    class BrandName {
-        <<Value Object>>
-        -String value
-        +of(String)$ BrandName
-    }
+### 전체 흐름도
 
-    Brand *-- "1" BrandName : -name
+```
+┌─────────────────────────────────────┐
+│   Interface Layer                    │
+│   (UserController, DTOs)             │ ← REST API 엔드포인트
+├─────────────────────────────────────┤
+│   Application Layer                  │
+│   (UseCases, UserService)            │ ← 비즈니스 로직
+├─────────────────────────────────────┤
+│   Domain Layer                       │
+│   (User, Value Objects, Ports)       │ ← 핵심 도메인
+├─────────────────────────────────────┤
+│   Infrastructure Layer               │
+│   (Adapters)                         │ ← 기술 구현
+├─────────────────────────────────────┤
+│   Persistence Layer                  │
+│   (JPA, Entity)                      │ ← 데이터베이스
+└─────────────────────────────────────┘
 ```
 
-| Role | Method | Path | UseCase |
-|---|---|---|---|
-| Any | `GET` | `/api/v1/brands/{brandId}` | `BrandQueryUseCase` |
-| Admin | `GET` | `/api-admin/v1/brands` | `AdminBrandUseCase` |
-| Admin | `POST` | `/api-admin/v1/brands` | `AdminBrandUseCase` |
-| Admin | `PUT` | `/api-admin/v1/brands/{id}` | `AdminBrandUseCase` |
-| Admin | `DELETE` | `/api-admin/v1/brands/{id}` | `AdminBrandUseCase` (하위 상품 Cascade) |
+### 요청 처리 흐름 예시
 
----
+1. **HTTP Request** → `UserController.register()`
+2. **Controller** → `RegisterUseCase.register()` 호출
+3. **UseCase** → `UserService.register()` 실행
+4. **Service** → `User.register()` (도메인 로직)
+5. **Service** → `UserRepository.save()` 호출 (Domain Port)
+6. **Repository** → `UserRepositoryImpl.save()` 실행 (Adapter)
+7. **Adapter** → `UserJpaRepository.save()` 실행 (JPA)
+8. **JPA** → 데이터베이스에 저장
+9. 역순으로 응답 반환
 
-## 6-8. Product 도메인
+### 의존성 방향
 
-```mermaid
-classDiagram
-    class Product {
-        <<Aggregate Root>>
-        -Long id
-        -Long brandId
-        -ProductName name
-        -Money price
-        -StockQuantity stockQuantity
-        -String description
-        -List~ProductImage~ images
-        -int likeCount
-        +register(...)$ Product
-        +decreaseStock(int) Product
-        +isOutOfStock() boolean
-    }
-    class ProductName {
-        <<Value Object>>
-        -String value
-        +of(String)$ ProductName
-    }
-    class Money {
-        <<Value Object>>
-        -int value
-        +of(int)$ Money
-    }
-    class StockQuantity {
-        <<Value Object>>
-        -int value
-        +decrease(int) StockQuantity
-        +isZero() boolean
-    }
-    class ProductImage {
-        <<Value Object>>
-        -String url
-        -int sortOrder
-    }
-
-    Product *-- "1" ProductName : -name
-    Product *-- "1" Money : -price
-    Product *-- "1" StockQuantity : -stockQuantity
-    Product *-- "0..*" ProductImage : -images
+```
+Interface → Application → Domain ← Infrastructure ← Persistence
+                            ↑              ↓
+                            └──────────────┘
+                            (의존성 역전)
 ```
 
-| Role | Method | Path |
-|---|---|---|
-| Any | `GET` | `/api/v1/products?brandId=&sort=&page=&size=` |
-| Any | `GET` | `/api/v1/products/{productId}` |
-| Admin | `POST` | `/api-admin/v1/products` |
-| Admin | `PUT` | `/api-admin/v1/products/{id}` |
-| Admin | `DELETE` | `/api-admin/v1/products/{id}` |
+### 핵심 원칙
 
-정렬: `latest` (기본) | `price_asc` | `likes_desc`
+1. ✅ **도메인 독립성**: Domain은 외부 기술에 의존하지 않음
+2. ✅ **의존성 역전**: Infrastructure가 Domain을 구현
+3. ✅ **Port & Adapter**: 인터페이스(Port)와 구현(Adapter) 분리
+4. ✅ **불변성**: Value Object는 모두 불변
+5. ✅ **응집도**: 관련된 로직은 한 곳에 모음
+6. ✅ **테스트 용이성**: 각 레이어를 독립적으로 테스트 가능
 
----
+### 레이어별 색상 가이드
 
-## 6-9. Like 도메인
-
-```mermaid
-classDiagram
-    class Like {
-        <<Entity>>
-        -Long id
-        -UserId userId
-        -Long productId
-        -LocalDateTime createdAt
-        +create(userId, productId)$ Like
-    }
-    class LikeRepository {
-        <<interface>>
-        +save(Like) Like
-        +delete(UserId, Long) void
-        +existsByUserIdAndProductId(UserId, Long) boolean
-    }
-
-    Like ..> UserId : -userId
-    LikeRepository ..> Like : «manages»
-```
-
-- **멱등성**: 이미 좋아요한 상품에 다시 좋아요 → 예외 없이 무시
-- **유저당 1상품 1좋아요**: `UNIQUE(user_id, product_id)` 제약
-- **좋아요 수 동기화**: `Like` 생성/삭제 시 `Product.likeCount` 증감
-
-| Role | Method | Path |
-|---|---|---|
-| User | `POST` | `/api/v1/products/{id}/likes` |
-| User | `DELETE` | `/api/v1/products/{id}/likes` |
-| User | `GET` | `/api/v1/users/me/likes` |
-
----
-
-## 6-10. Order 도메인
-
-```mermaid
-classDiagram
-    class Order {
-        <<Aggregate Root>>
-        -Long id
-        -UserId userId
-        -Money totalAmount
-        -Money discountAmount
-        -Money paymentAmount
-        -OrderStatus status
-        +create(...)$ Order
-        +cancel() Order
-        +isCancellable() boolean
-    }
-    class OrderItem {
-        <<Entity>>
-        -Long productId
-        -int quantity
-        -Money price
-    }
-    class OrderStatus {
-        <<enumeration>>
-        PAYMENT_COMPLETED
-        PREPARING
-        SHIPPING
-        DELIVERED
-        CANCELLED
-    }
-    class OrderSnapshot {
-        <<Value Object>>
-        -String snapshotData
-        +capture(...)$ OrderSnapshot
-    }
-    class ShippingInfo {
-        <<Value Object>>
-        -String address
-        -String receiverName
-        -String receiverPhone
-    }
-    class PaymentMethod {
-        <<Value Object>>
-        -String type
-        -String detail
-    }
-
-    %% 합성 (Composition) - Order 소멸 시 함께 소멸
-    Order *-- "1..*" OrderItem : 주문 상세
-    Order *-- "1" OrderSnapshot : 주문 시점 스냅샷
-    Order *-- "1" ShippingInfo : 배송 정보
-    Order *-- "1" PaymentMethod : 결제 수단
-
-    %% 연관 (Association) - enum 참조
-    Order --> OrderStatus : -status
-```
-
-**주문 생성 프로세스**: 재고 확인 → 재고 차감 → 결제 금액 검증 → 스냅샷 생성 → 주문 생성
-
-| 상태 | 주문 취소 | 배송지 변경 |
-|---|---|---|
-| `PAYMENT_COMPLETED` | 가능 | 가능 |
-| `PREPARING` | 가능 | 가능 |
-| `SHIPPING` | 불가 | 불가 |
-| `DELIVERED` | 불가 | 불가 |
-
-| Role | Method | Path |
-|---|---|---|
-| User | `POST` | `/api/v1/orders` |
-| User | `GET` | `/api/v1/orders/me` |
-| User | `GET` | `/api/v1/orders/{id}` |
-| Admin | `GET` | `/api-admin/v1/orders` |
-
----
-
-## 6-11. Admin 인증
-
-관리자 API는 `X-Loopers-Ldap` 헤더로 권한 검증합니다.
-
-| 규칙 | 설명 |
-|---|---|
-| Admin 인증 | `X-Loopers-Ldap: loopers.admin` 헤더 필수 |
-| User 접근 차단 | `/api-admin/**` 호출 시 403 Forbidden |
-| 타 유저 접근 차단 | 유저는 자신의 정보만 조회 가능 |
+| 레이어 | 색상 | 설명 |
+|--------|------|------|
+| Interface | 🔵 파란색 | REST API, DTOs |
+| Application | 🟢 초록색 | UseCases, Service |
+| Domain (Aggregate) | 🟠 주황색 | User (Aggregate Root) |
+| Domain (Value Object) | 🟡 노란색 | 불변 값 객체들 |
+| Domain (Port) | 🟡 진한 노란색 | 인터페이스 |
+| Infrastructure | 🟣 보라색 | Adapter 구현체 |
+| Persistence | ⚪ 회색 | JPA, Entity |
