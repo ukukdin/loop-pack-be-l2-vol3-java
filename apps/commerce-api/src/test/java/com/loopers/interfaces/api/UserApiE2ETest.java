@@ -119,7 +119,7 @@ class UserApiE2ETest {
             );
 
             // then
-            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
         }
 
         @Test
@@ -135,7 +135,7 @@ class UserApiE2ETest {
             );
 
             // then
-            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
         }
     }
 
@@ -189,7 +189,7 @@ class UserApiE2ETest {
             );
 
             // then - 이전 비밀번호로는 실패
-            assertThat(oldPasswordResponse.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            assertThat(oldPasswordResponse.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
         }
 
         @Test
