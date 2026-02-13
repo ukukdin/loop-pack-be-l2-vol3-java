@@ -12,7 +12,7 @@ import java.util.regex.Pattern;
 
 @Getter
 @EqualsAndHashCode
-@ToString
+@ToString(exclude = "value")
 public class Password {
     private static final Pattern ALLOWED_CHARS = Pattern.compile("^[a-zA-Z0-9!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>/?`~]{8,16}$");
     private static final DateTimeFormatter FMT_YYYYMMDD = DateTimeFormatter.ofPattern("yyyyMMdd");

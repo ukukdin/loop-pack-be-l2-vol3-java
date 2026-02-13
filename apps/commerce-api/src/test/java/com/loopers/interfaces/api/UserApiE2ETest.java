@@ -292,6 +292,6 @@ class UserApiE2ETest {
 
     private void registerUser(String loginId, String password, String name) {
         var request = createRegisterRequest(loginId, password, name);
-        restTemplate.postForEntity(BASE_URL + "/register", request, Void.class);
-    }
+        ResponseEntity<Void> response = restTemplate.postForEntity(BASE_URL + "/register", request, Void.class);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);    }
 }

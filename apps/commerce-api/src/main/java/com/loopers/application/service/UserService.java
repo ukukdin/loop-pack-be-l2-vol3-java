@@ -52,10 +52,9 @@ public class UserService implements RegisterUseCase, PasswordUpdateUseCase, User
         User user = findUser(userId);
 
         LocalDate birthday = user.getBirth().getValue();
-        Password currentPassword = Password.of(currentRawPassword, birthday);
         Password newPassword = Password.of(newRawPassword, birthday);
 
-        if (!passwordEncoder.matches(currentPassword.getValue(), user.getEncodedPassword())) {
+        if (!passwordEncoder.matches(currentRawPassword, user.getEncodedPassword())) {
             throw new IllegalArgumentException("현재 비밀번호가 일치하지 않습니다.");
         }
 

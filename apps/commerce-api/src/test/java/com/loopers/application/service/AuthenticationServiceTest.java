@@ -61,7 +61,7 @@ class AuthenticationServiceTest {
         // when & then
         assertThatThrownBy(() -> service.authenticate(userId, "password"))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("사용자를 찾을 수 없습니다");
+                .hasMessageContaining("아이디 또는 비밀번호가 올바르지 않습니다");
     }
 
     @Test
@@ -79,7 +79,7 @@ class AuthenticationServiceTest {
         // when & then
         assertThatThrownBy(() -> service.authenticate(userId, wrongPassword))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("비밀번호가 일치하지 않습니다");
+                .hasMessageContaining("아이디 또는 비밀번호가 올바르지 않습니다");
     }
 
     private User createUser(UserId userId, String encodedPassword) {

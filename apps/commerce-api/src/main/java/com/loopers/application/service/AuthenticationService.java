@@ -19,18 +19,15 @@ public class AuthenticationService implements AuthenticationUseCase {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
     }
+   private static final String AUTH_FAILURE_MESSAGE = "아이디 또는 비밀번호가 올바르지 않습니다.";
 
     @Override
     public void authenticate(UserId userId, String rawPassword) {
-        User user = findUser(userId);
+        User user = userRepository.findById(userId).orElseThrow(() -> new IllegalArgumentException(AUTH_FAILURE_MESSAGE));
 
         if (!passwordEncoder.matches(rawPassword, user.getEncodedPassword())) {
-            throw new IllegalArgumentException("비밀번호가 일치하지 않습니다.");
+            throw new IllegalArgumentException(AUTH_FAILURE_MESSAGE);
         }
     }
 
-    private User findUser(UserId userId) {
-        return userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
-    }
 }

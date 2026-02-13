@@ -17,7 +17,7 @@ public class User {
     private final Birthday birth; // YYYYMMDD format with default value
     private final Email email;
     private final WrongPasswordCount wrongPasswordCount;
-    private LocalDateTime createdAt;
+    private final LocalDateTime createdAt;
 
     public static User register(UserId userId,UserName userName, String encodedPassword, Birthday birth, Email email, WrongPasswordCount wrongPasswordCount, LocalDateTime createdAt) {
         return new User(null,userId,userName,encodedPassword,birth,email, wrongPasswordCount,createdAt);

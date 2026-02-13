@@ -8,7 +8,7 @@ import com.loopers.interfaces.api.dto.PasswordUpdateRequest;
 import com.loopers.interfaces.api.dto.UserInfoResponse;
 import com.loopers.interfaces.api.dto.UserRegisterRequest;
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.validation.Valid;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -31,7 +31,7 @@ public class UserController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<Void> register(@Valid @RequestBody UserRegisterRequest request) {
+    public ResponseEntity<Void> register(@RequestBody UserRegisterRequest request) {
         registerUseCase.register(
                 request.loginId(),
                 request.name(),
@@ -53,7 +53,7 @@ public class UserController {
     @PutMapping("/me/password")
     public ResponseEntity<Void> updatePassword(
             HttpServletRequest request,
-            @Valid @RequestBody PasswordUpdateRequest passwordUpdateRequest
+            @RequestBody PasswordUpdateRequest passwordUpdateRequest
     ) {
         UserId userId = (UserId) request.getAttribute("authenticatedUserId");
 
