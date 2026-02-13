@@ -1,6 +1,5 @@
 package com.loopers.application.service;
 
-import com.loopers.application.AuthenticationUseCase;
 import com.loopers.application.PasswordUpdateUseCase;
 import com.loopers.application.RegisterUseCase;
 import com.loopers.application.UserQueryUseCase;
@@ -16,7 +15,7 @@ import java.time.LocalDateTime;
 
 @Service
 @Transactional(readOnly = true)
-public class UserService implements RegisterUseCase, AuthenticationUseCase, PasswordUpdateUseCase, UserQueryUseCase {
+public class UserService implements RegisterUseCase, PasswordUpdateUseCase, UserQueryUseCase {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
@@ -44,15 +43,6 @@ public class UserService implements RegisterUseCase, AuthenticationUseCase, Pass
             userRepository.save(user);
         } catch (DataIntegrityViolationException ex) {
             throw new IllegalArgumentException("이미 사용중인 ID 입니다.", ex);
-        }
-    }
-
-    @Override
-    public void authenticate(UserId userId, String rawPassword) {
-        User user = findUser(userId);
-
-        if (!passwordEncoder.matches(rawPassword, user.getEncodedPassword())) {
-            throw new IllegalArgumentException("비밀번호가 일치하지 않습니다.");
         }
     }
 

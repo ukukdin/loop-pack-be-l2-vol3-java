@@ -35,24 +35,38 @@ graph LR
 
 ## Part A. Interfaces → Application (요청 흐름)
 
-> Controller가 UseCase 인터페이스에 의존하고, UserService가 이를 **실체화(Realization)** 합니다.
+> **AuthenticationInterceptor**가 인증을 전담하고, Controller는 비즈니스 UseCase만 의존합니다. 인증 로직은 **AuthenticationService**로 분리되었습니다.
 
 ```mermaid
 classDiagram
     direction LR
 
     %% ═══════════════════════════════════════
-    %% Interfaces Layer
+    %% Interfaces Layer - Interceptor
+    %% ═══════════════════════════════════════
+    class AuthenticationInterceptor {
+        <<Component>>
+        -AuthenticationUseCase authenticationUseCase
+        +preHandle(HttpServletRequest, HttpServletResponse, Object) boolean
+        -sendUnauthorizedResponse(HttpServletResponse) void
+    }
+    class WebMvcConfig {
+        <<Configuration>>
+        -AuthenticationInterceptor authenticationInterceptor
+        +addInterceptors(InterceptorRegistry) void
+    }
+
+    %% ═══════════════════════════════════════
+    %% Interfaces Layer - Controller & DTOs
     %% ═══════════════════════════════════════
     class UserController {
         <<RestController>>
         -RegisterUseCase registerUseCase
-        -AuthenticationUseCase authenticationUseCase
         -UserQueryUseCase userQueryUseCase
         -PasswordUpdateUseCase passwordUpdateUseCase
         +register(UserRegisterRequest) ResponseEntity
-        +getMyInfo(String, String) ResponseEntity
-        +updatePassword(String, String, PasswordUpdateRequest) ResponseEntity
+        +getMyInfo(HttpServletRequest) ResponseEntity
+        +updatePassword(HttpServletRequest, PasswordUpdateRequest) ResponseEntity
     }
     class UserRegisterRequest {
         <<record>>
@@ -68,7 +82,7 @@ classDiagram
         -String name
         -String birthday
         -String email
-        +from(UserQueryUseCase) UserInfoResponse$
+        +from(UserQueryUseCase.UserInfoResponse) UserInfoResponse$
     }
     class PasswordUpdateRequest {
         <<record>>
@@ -107,16 +121,25 @@ classDiagram
         -UserRepository userRepository
         -PasswordEncoder passwordEncoder
         +register(String, String, String, LocalDate, String) void
-        +authenticate(UserId, String) void
         +getUserInfo(UserId) UserInfoResponse
         +updatePassword(UserId, String, String) void
         -findUser(UserId) User
         -maskName(String) String
     }
+    class AuthenticationService {
+        <<Service>>
+        -UserRepository userRepository
+        -PasswordEncoder passwordEncoder
+        +authenticate(UserId, String) void
+        -findUser(UserId) User
+    }
+
+    %% --- Interceptor → UseCase ---
+    AuthenticationInterceptor ..> AuthenticationUseCase : authenticates
+    WebMvcConfig --> AuthenticationInterceptor : registers
 
     %% --- 의존 (Dependency): Controller → UseCase ---
     UserController ..> RegisterUseCase : uses
-    UserController ..> AuthenticationUseCase : uses
     UserController ..> UserQueryUseCase : uses
     UserController ..> PasswordUpdateUseCase : uses
 
@@ -127,9 +150,9 @@ classDiagram
 
     %% --- 실체화 (Realization): Service → UseCase ---
     UserService ..|> RegisterUseCase : implements
-    UserService ..|> AuthenticationUseCase : implements
     UserService ..|> UserQueryUseCase : implements
     UserService ..|> PasswordUpdateUseCase : implements
+    AuthenticationService ..|> AuthenticationUseCase : implements
 
     %% --- inner record ---
     UserQueryUseCase *-- UserQueryUseCase_UserInfoResponse : inner record
@@ -140,6 +163,8 @@ classDiagram
     %% ═══════════════════════════════════════
     %% Styling
     %% ═══════════════════════════════════════
+    style AuthenticationInterceptor fill:#e3f2fd,stroke:#1e88e5,stroke-width:2px,color:#000
+    style WebMvcConfig fill:#e3f2fd,stroke:#1e88e5,stroke-width:1px,color:#000
     style UserController fill:#e3f2fd,stroke:#1e88e5,stroke-width:2px,color:#000
     style UserRegisterRequest fill:#fffde7,stroke:#fbc02d,stroke-width:1px,color:#000
     style UserInfoResponse fill:#fffde7,stroke:#fbc02d,stroke-width:1px,color:#000
@@ -151,24 +176,29 @@ classDiagram
     style UserQueryUseCase_UserInfoResponse fill:#e8f5e9,stroke:#43a047,stroke-width:1px,color:#000
     style PasswordUpdateUseCase fill:#e8f5e9,stroke:#43a047,stroke-width:2px,color:#000
     style UserService fill:#c8e6c9,stroke:#2e7d32,stroke-width:3px,color:#000
+    style AuthenticationService fill:#c8e6c9,stroke:#2e7d32,stroke-width:3px,color:#000
 ```
 
 ### 이 다이어그램에서 봐야 할 포인트
 
-- Controller는 `UserService`를 직접 알지 못한다. 4개의 UseCase 인터페이스만 의존하고, 구현체는 Spring이 주입한다. 이 경계가 무너지면 Controller 변경 시 Service 내부까지 영향이 번진다.
-- UseCase 4개 분리는 ISP 적용이다. `register()`만 쓰는 곳에서 `updatePassword()`를 알 필요가 없다. 단, UserService 하나가 4개를 모두 구현하므로 **인터페이스는 분리되어 있지만 구현의 응집은 유지**된다.
+- **인증 관심사 분리**: `AuthenticationInterceptor`가 `/api/v1/users/me/**` 경로의 인증을 전담한다. Controller는 `AuthenticationUseCase`를 더 이상 알지 못하며, `HttpServletRequest`의 `authenticatedUserId` 속성에서 인증된 사용자를 꺼내 쓴다.
+- **Service 분리**: `UserService`는 Register, Query, PasswordUpdate만 구현하고, `AuthenticationService`가 인증만 전담한다. 향후 도메인(주문, 좋아요 등)이 추가되어도 각 도메인별 Service가 독립적으로 존재하는 패턴의 기반이 된다.
+- **Interceptor 등록**: `WebMvcConfig`가 `AuthenticationInterceptor`를 인증이 필요한 경로에만 등록한다. `/api/v1/users/register`는 인증 없이 접근 가능하다.
 
 ### 설계 의도
 
-- **UseCase 인터페이스 분리 + Service 구현체 통합**: Controller는 자신이 사용하는 UseCase만 의존하고, 구현 코드의 중복(`findUser()`, `passwordEncoder` 등)은 UserService 한 곳에서 관리한다.
+- **UseCase 인터페이스 분리 + Service 구현체 분리**: 이전에는 `UserService`가 4개 UseCase를 모두 구현했으나, 인증이 도메인 로직이 아닌 횡단 관심사임을 인식하여 `AuthenticationService`로 분리했다.
+- **Interceptor 패턴**: Controller에서 반복되던 인증 호출 코드를 Interceptor로 추출하여, 새로운 인증 필요 API가 추가되어도 경로만 등록하면 된다.
 - `UserQueryUseCase` 안에 `UserInfoResponse` inner record를 두어, 반환 타입이 Application 레이어에서 정의된다. Interfaces 레이어의 DTO와 분리하여 레이어 간 결합을 끊는다.
 
-### 잠재 리스크
+### 이전 버전과의 차이
 
-| 리스크 | 설명 | 선택지 |
+| 항목 | Before | After |
 |---|---|---|
-| UserService 비대화 | 현재 4개 UseCase를 하나가 구현. 도메인이 커지면(주문, 좋아요 등) 메서드가 계속 늘어날 수 있음 | **A)** 도메인별 Service 분리 (OrderService, LikeService) **B)** 현재 User 도메인 내에서만 통합 유지하고, 다른 도메인은 별도 Service |
-| Controller에서 직접 인증 호출 | `getMyInfo()`와 `updatePassword()`에서 `authenticationUseCase.authenticate()`를 직접 호출. 인증 로직이 Controller에 노출됨 | **A)** 현행 유지 — 단순하고 명시적 **B)** Spring Interceptor/Filter로 인증을 분리하여 Controller는 비즈니스만 담당 |
+| 인증 호출 위치 | Controller에서 직접 `authenticationUseCase.authenticate()` | Interceptor `preHandle()`에서 처리 |
+| UserService 역할 | 4개 UseCase 모두 구현 | Register, Query, PasswordUpdate만 구현 |
+| 인증 실패 응답 | 400 Bad Request | 401 Unauthorized |
+| Controller 의존성 | 4개 UseCase | 3개 UseCase (인증 제거) |
 
 ---
 
@@ -184,6 +214,11 @@ classDiagram
     %% Application (연결점)
     %% ═══════════════════════════════════════
     class UserService {
+        <<Service>>
+        -UserRepository userRepository
+        -PasswordEncoder passwordEncoder
+    }
+    class AuthenticationService {
         <<Service>>
         -UserRepository userRepository
         -PasswordEncoder passwordEncoder
@@ -296,6 +331,9 @@ classDiagram
     UserService --> UserRepository : -userRepository
     UserService --> PasswordEncoder : -passwordEncoder
     UserService ..> User : uses
+    AuthenticationService --> UserRepository : -userRepository
+    AuthenticationService --> PasswordEncoder : -passwordEncoder
+    AuthenticationService ..> User : uses
 
     %% --- 합성 (Composition): User → Value Objects ---
     User *-- "1" UserId : -userId
@@ -325,7 +363,8 @@ classDiagram
     
     %% Application
     style UserService fill:#c8e6c9,stroke:#2e7d32,stroke-width:3px,color:#000
-    
+    style AuthenticationService fill:#c8e6c9,stroke:#2e7d32,stroke-width:3px,color:#000
+
     %% Domain - Aggregate Root
     style User fill:#ffecb3,stroke:#ff6f00,stroke-width:3px,color:#000
     
@@ -601,6 +640,7 @@ classDiagram
     class ErrorType {
         <<enumeration>>
         INTERNAL_ERROR
+        UNAUTHORIZED
         BAD_REQUEST
         NOT_FOUND
         CONFLICT
@@ -637,35 +677,40 @@ classDiagram
 ### 전체 흐름도
 
 ```
-┌─────────────────────────────────────┐
-│   Interface Layer                    │
-│   (UserController, DTOs)             │ ← REST API 엔드포인트
-├─────────────────────────────────────┤
-│   Application Layer                  │
-│   (UseCases, UserService)            │ ← 비즈니스 로직
-├─────────────────────────────────────┤
-│   Domain Layer                       │
-│   (User, Value Objects, Ports)       │ ← 핵심 도메인
-├─────────────────────────────────────┤
-│   Infrastructure Layer               │
-│   (Adapters)                         │ ← 기술 구현
-├─────────────────────────────────────┤
-│   Persistence Layer                  │
-│   (JPA, Entity)                      │ ← 데이터베이스
-└─────────────────────────────────────┘
+┌─────────────────────────────────────────────┐
+│   Interface Layer                            │
+│   (Interceptor, Controller, Config, DTOs)    │ ← REST API + 인증
+├─────────────────────────────────────────────┤
+│   Application Layer                          │
+│   (UseCases, UserService,                    │
+│    AuthenticationService)                    │ ← 비즈니스 로직
+├─────────────────────────────────────────────┤
+│   Domain Layer                               │
+│   (User, Value Objects, Ports)               │ ← 핵심 도메인
+├─────────────────────────────────────────────┤
+│   Infrastructure Layer                       │
+│   (Adapters)                                 │ ← 기술 구현
+├─────────────────────────────────────────────┤
+│   Persistence Layer                          │
+│   (JPA, Entity)                              │ ← 데이터베이스
+└─────────────────────────────────────────────┘
 ```
 
-### 요청 처리 흐름 예시
+### 요청 처리 흐름 예시 (인증 필요 API)
 
-1. **HTTP Request** → `UserController.register()`
+1. **HTTP Request** → `AuthenticationInterceptor.preHandle()`
+2. **Interceptor** → 헤더에서 `X-Loopers-LoginId`, `X-Loopers-LoginPw` 추출
+3. **Interceptor** → `AuthenticationUseCase.authenticate()` 호출
+4. **인증 성공** → `request.setAttribute("authenticatedUserId", userId)`
+5. **Controller** → `request.getAttribute("authenticatedUserId")`로 UserId 획득
+6. **Controller** → `UserQueryUseCase.getUserInfo(userId)` 호출
+7. **Service** → Domain 로직 실행 → Repository 호출 → 응답 반환
+
+### 요청 처리 흐름 예시 (인증 불필요 API)
+
+1. **HTTP Request** → `UserController.register()` (Interceptor 미적용)
 2. **Controller** → `RegisterUseCase.register()` 호출
-3. **UseCase** → `UserService.register()` 실행
-4. **Service** → `User.register()` (도메인 로직)
-5. **Service** → `UserRepository.save()` 호출 (Domain Port)
-6. **Repository** → `UserRepositoryImpl.save()` 실행 (Adapter)
-7. **Adapter** → `UserJpaRepository.save()` 실행 (JPA)
-8. **JPA** → 데이터베이스에 저장
-9. 역순으로 응답 반환
+3. **Service** → `User.register()` → `UserRepository.save()` → 응답 반환
 
 ### 의존성 방향
 
@@ -696,3 +741,627 @@ Interface → Application → Domain ← Infrastructure ← Persistence
 | Domain (Port) | 🟡 진한 노란색 | 인터페이스 |
 | Infrastructure | 🟣 보라색 | Adapter 구현체 |
 | Persistence | ⚪ 회색 | JPA, Entity |
+
+---
+
+## Part E. Brand 도메인
+
+> 관리자가 브랜드를 CRUD하고, 일반 유저는 조회만 가능합니다.
+
+### E-1. Interfaces → Application
+
+```mermaid
+classDiagram
+    direction LR
+
+    class BrandAdminController {
+        <<RestController>>
+        -CreateBrandUseCase createBrandUseCase
+        -UpdateBrandUseCase updateBrandUseCase
+        -DeleteBrandUseCase deleteBrandUseCase
+        -BrandQueryUseCase brandQueryUseCase
+        +createBrand(BrandCreateRequest) ResponseEntity
+        +updateBrand(Long, BrandUpdateRequest) ResponseEntity
+        +deleteBrand(Long) ResponseEntity
+        +getBrands() ResponseEntity
+    }
+    class BrandController {
+        <<RestController>>
+        -BrandQueryUseCase brandQueryUseCase
+        +getBrand(Long) ResponseEntity
+    }
+
+    class CreateBrandUseCase {
+        <<interface>>
+        +createBrand(String name, String description) void
+    }
+    class UpdateBrandUseCase {
+        <<interface>>
+        +updateBrand(Long brandId, String name, String description) void
+    }
+    class DeleteBrandUseCase {
+        <<interface>>
+        +deleteBrand(Long brandId) void
+    }
+    class BrandQueryUseCase {
+        <<interface>>
+        +getBrand(Long brandId) BrandInfo
+        +getBrands() List~BrandInfo~
+    }
+    class BrandService {
+        <<Service>>
+        -BrandRepository brandRepository
+        +createBrand(...) void
+        +updateBrand(...) void
+        +deleteBrand(...) void
+        +getBrand(...) BrandInfo
+        +getBrands() List~BrandInfo~
+    }
+
+    BrandAdminController ..> CreateBrandUseCase : uses
+    BrandAdminController ..> UpdateBrandUseCase : uses
+    BrandAdminController ..> DeleteBrandUseCase : uses
+    BrandAdminController ..> BrandQueryUseCase : uses
+    BrandController ..> BrandQueryUseCase : uses
+
+    BrandService ..|> CreateBrandUseCase : implements
+    BrandService ..|> UpdateBrandUseCase : implements
+    BrandService ..|> DeleteBrandUseCase : implements
+    BrandService ..|> BrandQueryUseCase : implements
+
+    style BrandAdminController fill:#e3f2fd,stroke:#1e88e5,stroke-width:2px,color:#000
+    style BrandController fill:#e3f2fd,stroke:#1e88e5,stroke-width:2px,color:#000
+    style CreateBrandUseCase fill:#e8f5e9,stroke:#43a047,stroke-width:2px,color:#000
+    style UpdateBrandUseCase fill:#e8f5e9,stroke:#43a047,stroke-width:2px,color:#000
+    style DeleteBrandUseCase fill:#e8f5e9,stroke:#43a047,stroke-width:2px,color:#000
+    style BrandQueryUseCase fill:#e8f5e9,stroke:#43a047,stroke-width:2px,color:#000
+    style BrandService fill:#c8e6c9,stroke:#2e7d32,stroke-width:3px,color:#000
+```
+
+### E-2. Domain
+
+```mermaid
+classDiagram
+    direction TB
+
+    class Brand {
+        <<Aggregate Root>>
+        -Long id
+        -BrandName name
+        -String description
+        -LocalDateTime createdAt
+        -LocalDateTime updatedAt
+        -LocalDateTime deletedAt
+        +create(BrandName, String) Brand$
+        +update(BrandName, String) Brand
+        +delete() Brand
+        +isDeleted() boolean
+    }
+    class BrandName {
+        <<Value Object>>
+        -String value
+        +of(String) BrandName$
+    }
+    class BrandRepository {
+        <<interface>>
+        <<Domain Port>>
+        +save(Brand) Brand
+        +findById(Long) Brand?
+        +findAll() List~Brand~
+        +deleteById(Long) void
+    }
+
+    Brand *-- "1" BrandName : -name
+    BrandService --> BrandRepository : -brandRepository
+    BrandService ..> Brand : uses
+
+    class BrandService {
+        <<Service>>
+    }
+
+    style Brand fill:#ffecb3,stroke:#ff6f00,stroke-width:3px,color:#000
+    style BrandName fill:#fff9c4,stroke:#fbc02d,stroke-width:1px,color:#000
+    style BrandRepository fill:#fffde7,stroke:#fdd835,stroke-width:2px,color:#000
+    style BrandService fill:#c8e6c9,stroke:#2e7d32,stroke-width:3px,color:#000
+```
+
+### 설계 포인트
+
+- Admin과 User가 별도 Controller. Admin은 CRUD 전체, User는 조회만 가능.
+- Brand 삭제는 Soft Delete (`deletedAt` 설정). 하위 Product도 Cascade Soft Delete 처리 필요.
+- `BrandName`은 Value Object로 중복 검증 로직을 캡슐화.
+
+---
+
+## Part F. Product 도메인
+
+> 관리자가 상품을 등록/수정/삭제하고, 일반 유저는 목록/상세 조회합니다. Command와 Query Service를 분리합니다.
+
+### F-1. Interfaces → Application
+
+```mermaid
+classDiagram
+    direction LR
+
+    class ProductAdminController {
+        <<RestController>>
+        -CreateProductUseCase createProductUseCase
+        -UpdateProductUseCase updateProductUseCase
+        -DeleteProductUseCase deleteProductUseCase
+        +createProduct(ProductCreateRequest) ResponseEntity
+        +updateProduct(Long, ProductUpdateRequest) ResponseEntity
+        +deleteProduct(Long) ResponseEntity
+    }
+    class ProductController {
+        <<RestController>>
+        -ProductQueryUseCase productQueryUseCase
+        +getProducts(ProductSearchCondition) ResponseEntity
+        +getProduct(Long) ResponseEntity
+    }
+
+    class CreateProductUseCase {
+        <<interface>>
+        +createProduct(Long brandId, String name, int price, int stock, String description) void
+    }
+    class UpdateProductUseCase {
+        <<interface>>
+        +updateProduct(Long productId, String name, int price, int stock, String description) void
+    }
+    class DeleteProductUseCase {
+        <<interface>>
+        +deleteProduct(Long productId) void
+    }
+    class ProductQueryUseCase {
+        <<interface>>
+        +getProducts(ProductSearchCondition) Page~ProductInfo~
+        +getProduct(Long productId) ProductDetailInfo
+    }
+    class ProductService {
+        <<Service>>
+        -ProductRepository productRepository
+        -BrandRepository brandRepository
+        +createProduct(...) void
+        +updateProduct(...) void
+        +deleteProduct(...) void
+    }
+    class ProductQueryService {
+        <<Service>>
+        -ProductRepository productRepository
+        +getProducts(...) Page~ProductInfo~
+        +getProduct(...) ProductDetailInfo
+    }
+
+    ProductAdminController ..> CreateProductUseCase : uses
+    ProductAdminController ..> UpdateProductUseCase : uses
+    ProductAdminController ..> DeleteProductUseCase : uses
+    ProductController ..> ProductQueryUseCase : uses
+
+    ProductService ..|> CreateProductUseCase : implements
+    ProductService ..|> UpdateProductUseCase : implements
+    ProductService ..|> DeleteProductUseCase : implements
+    ProductQueryService ..|> ProductQueryUseCase : implements
+
+    style ProductAdminController fill:#e3f2fd,stroke:#1e88e5,stroke-width:2px,color:#000
+    style ProductController fill:#e3f2fd,stroke:#1e88e5,stroke-width:2px,color:#000
+    style CreateProductUseCase fill:#e8f5e9,stroke:#43a047,stroke-width:2px,color:#000
+    style UpdateProductUseCase fill:#e8f5e9,stroke:#43a047,stroke-width:2px,color:#000
+    style DeleteProductUseCase fill:#e8f5e9,stroke:#43a047,stroke-width:2px,color:#000
+    style ProductQueryUseCase fill:#e8f5e9,stroke:#43a047,stroke-width:2px,color:#000
+    style ProductService fill:#c8e6c9,stroke:#2e7d32,stroke-width:3px,color:#000
+    style ProductQueryService fill:#c8e6c9,stroke:#2e7d32,stroke-width:3px,color:#000
+```
+
+### F-2. Domain
+
+```mermaid
+classDiagram
+    direction TB
+
+    class Product {
+        <<Aggregate Root>>
+        -Long id
+        -Long brandId
+        -ProductName name
+        -Price price
+        -Stock stock
+        -int likeCount
+        -String description
+        -LocalDateTime createdAt
+        -LocalDateTime updatedAt
+        -LocalDateTime deletedAt
+        +create(Long, ProductName, Price, Stock, String) Product$
+        +update(ProductName, Price, Stock, String) Product
+        +delete() Product
+        +decreaseStock(int) Product
+        +increaseLikeCount() Product
+        +decreaseLikeCount() Product
+    }
+    class ProductName {
+        <<Value Object>>
+        -String value
+        +of(String) ProductName$
+    }
+    class Price {
+        <<Value Object>>
+        -int value
+        +of(int) Price$
+    }
+    class Stock {
+        <<Value Object>>
+        -int value
+        +of(int) Stock$
+        +decrease(int) Stock
+        +hasEnough(int) boolean
+    }
+    class ProductImage {
+        <<Entity>>
+        -Long id
+        -Long productId
+        -String imageUrl
+        -int sortOrder
+    }
+    class ProductRepository {
+        <<interface>>
+        <<Domain Port>>
+        +save(Product) Product
+        +findById(Long) Product?
+        +findAll(ProductSearchCondition) Page~Product~
+        +deleteById(Long) void
+    }
+
+    Product *-- "1" ProductName : -name
+    Product *-- "1" Price : -price
+    Product *-- "1" Stock : -stock
+    Product o-- "0..*" ProductImage : -images
+
+    style Product fill:#ffecb3,stroke:#ff6f00,stroke-width:3px,color:#000
+    style ProductName fill:#fff9c4,stroke:#fbc02d,stroke-width:1px,color:#000
+    style Price fill:#fff9c4,stroke:#fbc02d,stroke-width:1px,color:#000
+    style Stock fill:#fff9c4,stroke:#fbc02d,stroke-width:1px,color:#000
+    style ProductImage fill:#fff9c4,stroke:#fbc02d,stroke-width:1px,color:#000
+    style ProductRepository fill:#fffde7,stroke:#fdd835,stroke-width:2px,color:#000
+```
+
+### 설계 포인트
+
+- **Command/Query 분리**: `ProductService`(CUD)와 `ProductQueryService`(R)를 분리하여 읽기 최적화와 쓰기 트랜잭션을 독립시킨다.
+- `brandId`는 Product가 Brand Aggregate를 직접 참조하지 않고 **ID 참조**로 연결. Aggregate 간 결합도를 낮춘다.
+- `Stock` Value Object에 `decrease()`, `hasEnough()` 로직을 캡슐화하여 재고 관련 규칙이 도메인에 집중된다.
+- `likeCount`는 비정규화 필드. LIKES 테이블과의 정합성은 서비스 레이어에서 트랜잭션으로 보장.
+- 브랜드 변경 불가(`Immutable`) --- `update()`에 brandId 파라미터 없음.
+
+---
+
+## Part G. Like 도메인
+
+> 인증된 유저가 상품에 좋아요를 등록/취소하고, 내 좋아요 목록을 조회합니다.
+
+### G-1. Interfaces → Application
+
+```mermaid
+classDiagram
+    direction LR
+
+    class LikeController {
+        <<RestController>>
+        -LikeUseCase likeUseCase
+        -UnlikeUseCase unlikeUseCase
+        -LikeQueryUseCase likeQueryUseCase
+        +like(HttpServletRequest, Long) ResponseEntity
+        +unlike(HttpServletRequest, Long) ResponseEntity
+        +getMyLikes(HttpServletRequest, LikeSearchCondition) ResponseEntity
+    }
+
+    class LikeUseCase {
+        <<interface>>
+        +like(UserId, Long productId) void
+    }
+    class UnlikeUseCase {
+        <<interface>>
+        +unlike(UserId, Long productId) void
+    }
+    class LikeQueryUseCase {
+        <<interface>>
+        +getMyLikes(UserId, LikeSearchCondition) List~LikeInfo~
+    }
+    class LikeService {
+        <<Service>>
+        -LikeRepository likeRepository
+        -ProductRepository productRepository
+        +like(...) void
+        +unlike(...) void
+        +getMyLikes(...) List~LikeInfo~
+    }
+
+    LikeController ..> LikeUseCase : uses
+    LikeController ..> UnlikeUseCase : uses
+    LikeController ..> LikeQueryUseCase : uses
+    LikeService ..|> LikeUseCase : implements
+    LikeService ..|> UnlikeUseCase : implements
+    LikeService ..|> LikeQueryUseCase : implements
+
+    style LikeController fill:#e3f2fd,stroke:#1e88e5,stroke-width:2px,color:#000
+    style LikeUseCase fill:#e8f5e9,stroke:#43a047,stroke-width:2px,color:#000
+    style UnlikeUseCase fill:#e8f5e9,stroke:#43a047,stroke-width:2px,color:#000
+    style LikeQueryUseCase fill:#e8f5e9,stroke:#43a047,stroke-width:2px,color:#000
+    style LikeService fill:#c8e6c9,stroke:#2e7d32,stroke-width:3px,color:#000
+```
+
+### G-2. Domain
+
+```mermaid
+classDiagram
+    direction TB
+
+    class Like {
+        <<Entity>>
+        -Long id
+        -UserId userId
+        -Long productId
+        -LocalDateTime createdAt
+        +create(UserId, Long) Like$
+    }
+    class LikeRepository {
+        <<interface>>
+        <<Domain Port>>
+        +save(Like) Like
+        +findByUserIdAndProductId(UserId, Long) Like?
+        +deleteByUserIdAndProductId(UserId, Long) void
+        +findAllByUserId(UserId, LikeSearchCondition) List~Like~
+        +existsByUserIdAndProductId(UserId, Long) boolean
+    }
+
+    Like ..> UserId : -userId
+
+    style Like fill:#ffecb3,stroke:#ff6f00,stroke-width:3px,color:#000
+    style LikeRepository fill:#fffde7,stroke:#fdd835,stroke-width:2px,color:#000
+    style UserId fill:#fff9c4,stroke:#fbc02d,stroke-width:1px,color:#000
+```
+
+### 설계 포인트
+
+- Like는 독립 Aggregate가 아닌 **Entity**. User와 Product 사이의 관계를 ID 참조로만 연결.
+- **Idempotency**: `like()` 호출 시 이미 좋아요가 존재하면 중복 저장하지 않음.
+- Like 생성/삭제 시 `Product.likeCount`를 같은 트랜잭션에서 증감하여 정합성 보장.
+- Controller는 `HttpServletRequest`에서 `authenticatedUserId`를 획득 (AuthenticationInterceptor 패턴).
+
+---
+
+## Part H. Order 도메인
+
+> 인증된 유저가 주문을 생성하고, 주문 내역을 조회합니다. 관리자는 전체 주문을 조회합니다.
+
+### H-1. Interfaces → Application
+
+```mermaid
+classDiagram
+    direction LR
+
+    class OrderController {
+        <<RestController>>
+        -CreateOrderUseCase createOrderUseCase
+        -OrderQueryUseCase orderQueryUseCase
+        +createOrder(HttpServletRequest, OrderCreateRequest) ResponseEntity
+        +getMyOrders(HttpServletRequest, OrderSearchCondition) ResponseEntity
+        +getOrder(HttpServletRequest, Long) ResponseEntity
+    }
+    class OrderAdminController {
+        <<RestController>>
+        -OrderQueryUseCase orderQueryUseCase
+        +getAllOrders(OrderSearchCondition) ResponseEntity
+    }
+
+    class CreateOrderUseCase {
+        <<interface>>
+        +createOrder(UserId, OrderCommand) void
+    }
+    class OrderQueryUseCase {
+        <<interface>>
+        +getMyOrders(UserId, OrderSearchCondition) List~OrderSummary~
+        +getOrder(UserId, Long orderId) OrderDetail
+        +getAllOrders(OrderSearchCondition) List~OrderSummary~
+    }
+    class OrderService {
+        <<Service>>
+        -OrderRepository orderRepository
+        -ProductRepository productRepository
+        +createOrder(...) void
+    }
+    class OrderQueryService {
+        <<Service>>
+        -OrderRepository orderRepository
+        +getMyOrders(...) List~OrderSummary~
+        +getOrder(...) OrderDetail
+        +getAllOrders(...) List~OrderSummary~
+    }
+
+    OrderController ..> CreateOrderUseCase : uses
+    OrderController ..> OrderQueryUseCase : uses
+    OrderAdminController ..> OrderQueryUseCase : uses
+
+    OrderService ..|> CreateOrderUseCase : implements
+    OrderQueryService ..|> OrderQueryUseCase : implements
+
+    style OrderController fill:#e3f2fd,stroke:#1e88e5,stroke-width:2px,color:#000
+    style OrderAdminController fill:#e3f2fd,stroke:#1e88e5,stroke-width:2px,color:#000
+    style CreateOrderUseCase fill:#e8f5e9,stroke:#43a047,stroke-width:2px,color:#000
+    style OrderQueryUseCase fill:#e8f5e9,stroke:#43a047,stroke-width:2px,color:#000
+    style OrderService fill:#c8e6c9,stroke:#2e7d32,stroke-width:3px,color:#000
+    style OrderQueryService fill:#c8e6c9,stroke:#2e7d32,stroke-width:3px,color:#000
+```
+
+### H-2. Domain
+
+```mermaid
+classDiagram
+    direction TB
+
+    class Order {
+        <<Aggregate Root>>
+        -Long id
+        -UserId userId
+        -ReceiverName receiverName
+        -Address address
+        -String deliveryRequest
+        -PaymentMethod paymentMethod
+        -Money totalAmount
+        -Money discountAmount
+        -Money paymentAmount
+        -OrderStatus status
+        -LocalDate desiredDeliveryDate
+        -LocalDateTime createdAt
+        -LocalDateTime updatedAt
+        +create(UserId, List~OrderItemCommand~, DeliveryInfo, PaymentMethod) Order$
+        +cancel() Order
+        +updateDeliveryAddress(Address) Order
+        +isCancellable() boolean
+    }
+    class OrderItem {
+        <<Entity>>
+        -Long id
+        -Long productId
+        -int quantity
+        -Money unitPrice
+    }
+    class OrderSnapshot {
+        <<Entity>>
+        -Long id
+        -String snapshotData
+        -LocalDateTime createdAt
+    }
+    class OrderStatus {
+        <<enumeration>>
+        PAYMENT_COMPLETED
+        PREPARING
+        SHIPPING
+        DELIVERED
+    }
+    class Money {
+        <<Value Object>>
+        -int value
+        +of(int) Money$
+        +add(Money) Money
+        +subtract(Money) Money
+        +multiply(int) Money
+    }
+    class ReceiverName {
+        <<Value Object>>
+        -String value
+        +of(String) ReceiverName$
+    }
+    class Address {
+        <<Value Object>>
+        -String value
+        +of(String) Address$
+    }
+    class PaymentMethod {
+        <<enumeration>>
+        CARD
+        BANK_TRANSFER
+    }
+    class OrderRepository {
+        <<interface>>
+        <<Domain Port>>
+        +save(Order) Order
+        +findById(Long) Order?
+        +findAllByUserId(UserId, OrderSearchCondition) List~Order~
+        +findAll(OrderSearchCondition) List~Order~
+    }
+
+    Order *-- "1..*" OrderItem : -items
+    Order *-- "0..1" OrderSnapshot : -snapshot
+    Order *-- "1" OrderStatus : -status
+    Order *-- "1" Money : -totalAmount
+    Order *-- "1" Money : -discountAmount
+    Order *-- "1" Money : -paymentAmount
+    Order *-- "1" ReceiverName : -receiverName
+    Order *-- "1" Address : -address
+    Order *-- "1" PaymentMethod : -paymentMethod
+    OrderItem *-- "1" Money : -unitPrice
+
+    style Order fill:#ffecb3,stroke:#ff6f00,stroke-width:3px,color:#000
+    style OrderItem fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#000
+    style OrderSnapshot fill:#fff9c4,stroke:#fbc02d,stroke-width:1px,color:#000
+    style OrderStatus fill:#fff9c4,stroke:#fbc02d,stroke-width:1px,color:#000
+    style Money fill:#fff9c4,stroke:#fbc02d,stroke-width:1px,color:#000
+    style ReceiverName fill:#fff9c4,stroke:#fbc02d,stroke-width:1px,color:#000
+    style Address fill:#fff9c4,stroke:#fbc02d,stroke-width:1px,color:#000
+    style PaymentMethod fill:#fff9c4,stroke:#fbc02d,stroke-width:1px,color:#000
+    style OrderRepository fill:#fffde7,stroke:#fdd835,stroke-width:2px,color:#000
+```
+
+### 설계 포인트
+
+- **Order가 Aggregate Root**, OrderItem과 OrderSnapshot은 Order 생명주기에 종속된 Entity.
+- **주문 생성 프로세스**: 재고 확인 → 재고 차감 → (쿠폰 적용) → 금액 검증 → 주문 생성. 하나의 트랜잭션.
+- `OrderItem.unitPrice`는 주문 시점 스냅샷. `Product.price` 변경에 영향받지 않음.
+- **상태 전이 규칙**: `PAYMENT_COMPLETED`/`PREPARING`에서만 취소/배송지 변경 가능.
+- `Money` Value Object로 금액 연산을 캡슐화.
+
+---
+
+## Part I. 도메인 간 관계 종합
+
+```mermaid
+classDiagram
+    direction TB
+
+    class User {
+        <<Aggregate Root>>
+        -UserId userId
+    }
+    class Brand {
+        <<Aggregate Root>>
+        -Long id
+        -BrandName name
+    }
+    class Product {
+        <<Aggregate Root>>
+        -Long id
+        -Long brandId
+        -ProductName name
+        -Price price
+        -Stock stock
+    }
+    class Like {
+        <<Entity>>
+        -UserId userId
+        -Long productId
+    }
+    class Order {
+        <<Aggregate Root>>
+        -Long id
+        -UserId userId
+        -OrderStatus status
+    }
+    class OrderItem {
+        <<Entity>>
+        -Long productId
+        -int quantity
+        -Money unitPrice
+    }
+
+    Product ..> Brand : brandId 참조
+    Like ..> User : userId 참조
+    Like ..> Product : productId 참조
+    Order ..> User : userId 참조
+    Order *-- "1..*" OrderItem : 합성
+    OrderItem ..> Product : productId 참조
+
+    style User fill:#e8f5e9,stroke:#43a047,stroke-width:3px,color:#000
+    style Brand fill:#e3f2fd,stroke:#1e88e5,stroke-width:3px,color:#000
+    style Product fill:#fff3e0,stroke:#ef6c00,stroke-width:3px,color:#000
+    style Like fill:#fce4ec,stroke:#c62828,stroke-width:3px,color:#000
+    style Order fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px,color:#000
+    style OrderItem fill:#f3e5f5,stroke:#7b1fa2,stroke-width:1px,color:#000
+```
+
+### Aggregate 간 참조 규칙
+
+| 참조 | 방식 | 이유 |
+|---|---|---|
+| Product → Brand | `brandId` (Long) | 다른 Aggregate를 직접 참조하지 않아 결합도 최소화 |
+| Like → User | `userId` (UserId) | User Aggregate의 식별자만 사용 |
+| Like → Product | `productId` (Long) | Product Aggregate의 식별자만 사용 |
+| Order → User | `userId` (UserId) | 주문자 식별 |
+| OrderItem → Product | `productId` (Long) | 주문 시점 단가를 OrderItem에 스냅샷 |

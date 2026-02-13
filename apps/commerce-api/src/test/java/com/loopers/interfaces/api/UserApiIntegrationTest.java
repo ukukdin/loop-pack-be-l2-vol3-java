@@ -153,7 +153,7 @@ class UserApiIntegrationTest {
             mockMvc.perform(get(BASE_URL + "/me")
                             .header("X-Loopers-LoginId", loginId)
                             .header("X-Loopers-LoginPw", "WrongPassword1!"))
-                    .andExpect(status().isBadRequest());
+                    .andExpect(status().isUnauthorized());
         }
 
         @Test
@@ -162,7 +162,7 @@ class UserApiIntegrationTest {
             mockMvc.perform(get(BASE_URL + "/me")
                             .header("X-Loopers-LoginId", "notexist")
                             .header("X-Loopers-LoginPw", "Password1!"))
-                    .andExpect(status().isBadRequest());
+                    .andExpect(status().isUnauthorized());
         }
 
         @Test
@@ -254,7 +254,7 @@ class UserApiIntegrationTest {
                             .header("X-Loopers-LoginPw", "WrongPassword1!")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
-                    .andExpect(status().isBadRequest());
+                    .andExpect(status().isUnauthorized());
         }
     }
 

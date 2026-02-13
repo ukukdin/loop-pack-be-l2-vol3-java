@@ -77,62 +77,6 @@ class UserServiceTest {
     }
 
     @Nested
-    @DisplayName("인증")
-    class Authentication {
-
-        @Test
-        @DisplayName("인증 성공")
-        void authenticate_success() {
-            // given
-            UserId userId = UserId.of("test1234");
-            String rawPassword = "Password1!";
-            String encodedPassword = "encoded_password";
-            User user = createUser(userId, encodedPassword);
-
-            when(userRepository.findById(userId)).thenReturn(Optional.of(user));
-            when(passwordEncoder.matches(rawPassword, encodedPassword)).thenReturn(true);
-
-            // when & then
-            service.authenticate(userId, rawPassword);
-
-            verify(userRepository).findById(userId);
-            verify(passwordEncoder).matches(rawPassword, encodedPassword);
-        }
-
-        @Test
-        @DisplayName("존재하지 않는 사용자 인증 실패")
-        void authenticate_fail_userNotFound() {
-            // given
-            UserId userId = UserId.of("notexist");
-
-            when(userRepository.findById(userId)).thenReturn(Optional.empty());
-
-            // when & then
-            assertThatThrownBy(() -> service.authenticate(userId, "password"))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("사용자를 찾을 수 없습니다");
-        }
-
-        @Test
-        @DisplayName("비밀번호 불일치 인증 실패")
-        void authenticate_fail_passwordMismatch() {
-            // given
-            UserId userId = UserId.of("test1234");
-            String wrongPassword = "WrongPassword1!";
-            String encodedPassword = "encoded_password";
-            User user = createUser(userId, encodedPassword);
-
-            when(userRepository.findById(userId)).thenReturn(Optional.of(user));
-            when(passwordEncoder.matches(wrongPassword, encodedPassword)).thenReturn(false);
-
-            // when & then
-            assertThatThrownBy(() -> service.authenticate(userId, wrongPassword))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("비밀번호가 일치하지 않습니다");
-        }
-    }
-
-    @Nested
     @DisplayName("비밀번호 변경")
     class PasswordUpdate {
 
