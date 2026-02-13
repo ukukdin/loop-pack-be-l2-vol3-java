@@ -35,24 +35,38 @@ graph LR
 
 ## Part A. Interfaces → Application (요청 흐름)
 
-> Controller가 UseCase 인터페이스에 의존하고, UserService가 이를 **실체화(Realization)** 합니다.
+> **AuthenticationInterceptor**가 인증을 전담하고, Controller는 비즈니스 UseCase만 의존합니다. 인증 로직은 **AuthenticationService**로 분리되었습니다.
 
 ```mermaid
 classDiagram
     direction LR
 
     %% ═══════════════════════════════════════
-    %% Interfaces Layer
+    %% Interfaces Layer - Interceptor
+    %% ═══════════════════════════════════════
+    class AuthenticationInterceptor {
+        <<Component>>
+        -AuthenticationUseCase authenticationUseCase
+        +preHandle(HttpServletRequest, HttpServletResponse, Object) boolean
+        -sendUnauthorizedResponse(HttpServletResponse) void
+    }
+    class WebMvcConfig {
+        <<Configuration>>
+        -AuthenticationInterceptor authenticationInterceptor
+        +addInterceptors(InterceptorRegistry) void
+    }
+
+    %% ═══════════════════════════════════════
+    %% Interfaces Layer - Controller & DTOs
     %% ═══════════════════════════════════════
     class UserController {
         <<RestController>>
         -RegisterUseCase registerUseCase
-        -AuthenticationUseCase authenticationUseCase
         -UserQueryUseCase userQueryUseCase
         -PasswordUpdateUseCase passwordUpdateUseCase
         +register(UserRegisterRequest) ResponseEntity
-        +getMyInfo(String, String) ResponseEntity
-        +updatePassword(String, String, PasswordUpdateRequest) ResponseEntity
+        +getMyInfo(HttpServletRequest) ResponseEntity
+        +updatePassword(HttpServletRequest, PasswordUpdateRequest) ResponseEntity
     }
     class UserRegisterRequest {
         <<record>>
@@ -68,7 +82,7 @@ classDiagram
         -String name
         -String birthday
         -String email
-        +from(UserQueryUseCase) UserInfoResponse$
+        +from(UserQueryUseCase.UserInfoResponse) UserInfoResponse$
     }
     class PasswordUpdateRequest {
         <<record>>
@@ -107,16 +121,25 @@ classDiagram
         -UserRepository userRepository
         -PasswordEncoder passwordEncoder
         +register(String, String, String, LocalDate, String) void
-        +authenticate(UserId, String) void
         +getUserInfo(UserId) UserInfoResponse
         +updatePassword(UserId, String, String) void
         -findUser(UserId) User
         -maskName(String) String
     }
+    class AuthenticationService {
+        <<Service>>
+        -UserRepository userRepository
+        -PasswordEncoder passwordEncoder
+        +authenticate(UserId, String) void
+        -findUser(UserId) User
+    }
+
+    %% --- Interceptor → UseCase ---
+    AuthenticationInterceptor ..> AuthenticationUseCase : authenticates
+    WebMvcConfig --> AuthenticationInterceptor : registers
 
     %% --- 의존 (Dependency): Controller → UseCase ---
     UserController ..> RegisterUseCase : uses
-    UserController ..> AuthenticationUseCase : uses
     UserController ..> UserQueryUseCase : uses
     UserController ..> PasswordUpdateUseCase : uses
 
@@ -127,9 +150,9 @@ classDiagram
 
     %% --- 실체화 (Realization): Service → UseCase ---
     UserService ..|> RegisterUseCase : implements
-    UserService ..|> AuthenticationUseCase : implements
     UserService ..|> UserQueryUseCase : implements
     UserService ..|> PasswordUpdateUseCase : implements
+    AuthenticationService ..|> AuthenticationUseCase : implements
 
     %% --- inner record ---
     UserQueryUseCase *-- UserQueryUseCase_UserInfoResponse : inner record
@@ -140,6 +163,8 @@ classDiagram
     %% ═══════════════════════════════════════
     %% Styling
     %% ═══════════════════════════════════════
+    style AuthenticationInterceptor fill:#e3f2fd,stroke:#1e88e5,stroke-width:2px,color:#000
+    style WebMvcConfig fill:#e3f2fd,stroke:#1e88e5,stroke-width:1px,color:#000
     style UserController fill:#e3f2fd,stroke:#1e88e5,stroke-width:2px,color:#000
     style UserRegisterRequest fill:#fffde7,stroke:#fbc02d,stroke-width:1px,color:#000
     style UserInfoResponse fill:#fffde7,stroke:#fbc02d,stroke-width:1px,color:#000
@@ -151,24 +176,29 @@ classDiagram
     style UserQueryUseCase_UserInfoResponse fill:#e8f5e9,stroke:#43a047,stroke-width:1px,color:#000
     style PasswordUpdateUseCase fill:#e8f5e9,stroke:#43a047,stroke-width:2px,color:#000
     style UserService fill:#c8e6c9,stroke:#2e7d32,stroke-width:3px,color:#000
+    style AuthenticationService fill:#c8e6c9,stroke:#2e7d32,stroke-width:3px,color:#000
 ```
 
 ### 이 다이어그램에서 봐야 할 포인트
 
-- Controller는 `UserService`를 직접 알지 못한다. 4개의 UseCase 인터페이스만 의존하고, 구현체는 Spring이 주입한다. 이 경계가 무너지면 Controller 변경 시 Service 내부까지 영향이 번진다.
-- UseCase 4개 분리는 ISP 적용이다. `register()`만 쓰는 곳에서 `updatePassword()`를 알 필요가 없다. 단, UserService 하나가 4개를 모두 구현하므로 **인터페이스는 분리되어 있지만 구현의 응집은 유지**된다.
+- **인증 관심사 분리**: `AuthenticationInterceptor`가 `/api/v1/users/me/**` 경로의 인증을 전담한다. Controller는 `AuthenticationUseCase`를 더 이상 알지 못하며, `HttpServletRequest`의 `authenticatedUserId` 속성에서 인증된 사용자를 꺼내 쓴다.
+- **Service 분리**: `UserService`는 Register, Query, PasswordUpdate만 구현하고, `AuthenticationService`가 인증만 전담한다. 향후 도메인(주문, 좋아요 등)이 추가되어도 각 도메인별 Service가 독립적으로 존재하는 패턴의 기반이 된다.
+- **Interceptor 등록**: `WebMvcConfig`가 `AuthenticationInterceptor`를 인증이 필요한 경로에만 등록한다. `/api/v1/users/register`는 인증 없이 접근 가능하다.
 
 ### 설계 의도
 
-- **UseCase 인터페이스 분리 + Service 구현체 통합**: Controller는 자신이 사용하는 UseCase만 의존하고, 구현 코드의 중복(`findUser()`, `passwordEncoder` 등)은 UserService 한 곳에서 관리한다.
+- **UseCase 인터페이스 분리 + Service 구현체 분리**: 이전에는 `UserService`가 4개 UseCase를 모두 구현했으나, 인증이 도메인 로직이 아닌 횡단 관심사임을 인식하여 `AuthenticationService`로 분리했다.
+- **Interceptor 패턴**: Controller에서 반복되던 인증 호출 코드를 Interceptor로 추출하여, 새로운 인증 필요 API가 추가되어도 경로만 등록하면 된다.
 - `UserQueryUseCase` 안에 `UserInfoResponse` inner record를 두어, 반환 타입이 Application 레이어에서 정의된다. Interfaces 레이어의 DTO와 분리하여 레이어 간 결합을 끊는다.
 
-### 잠재 리스크
+### 이전 버전과의 차이
 
-| 리스크 | 설명 | 선택지 |
+| 항목 | Before | After |
 |---|---|---|
-| UserService 비대화 | 현재 4개 UseCase를 하나가 구현. 도메인이 커지면(주문, 좋아요 등) 메서드가 계속 늘어날 수 있음 | **A)** 도메인별 Service 분리 (OrderService, LikeService) **B)** 현재 User 도메인 내에서만 통합 유지하고, 다른 도메인은 별도 Service |
-| Controller에서 직접 인증 호출 | `getMyInfo()`와 `updatePassword()`에서 `authenticationUseCase.authenticate()`를 직접 호출. 인증 로직이 Controller에 노출됨 | **A)** 현행 유지 — 단순하고 명시적 **B)** Spring Interceptor/Filter로 인증을 분리하여 Controller는 비즈니스만 담당 |
+| 인증 호출 위치 | Controller에서 직접 `authenticationUseCase.authenticate()` | Interceptor `preHandle()`에서 처리 |
+| UserService 역할 | 4개 UseCase 모두 구현 | Register, Query, PasswordUpdate만 구현 |
+| 인증 실패 응답 | 400 Bad Request | 401 Unauthorized |
+| Controller 의존성 | 4개 UseCase | 3개 UseCase (인증 제거) |
 
 ---
 
@@ -184,6 +214,11 @@ classDiagram
     %% Application (연결점)
     %% ═══════════════════════════════════════
     class UserService {
+        <<Service>>
+        -UserRepository userRepository
+        -PasswordEncoder passwordEncoder
+    }
+    class AuthenticationService {
         <<Service>>
         -UserRepository userRepository
         -PasswordEncoder passwordEncoder
@@ -296,6 +331,9 @@ classDiagram
     UserService --> UserRepository : -userRepository
     UserService --> PasswordEncoder : -passwordEncoder
     UserService ..> User : uses
+    AuthenticationService --> UserRepository : -userRepository
+    AuthenticationService --> PasswordEncoder : -passwordEncoder
+    AuthenticationService ..> User : uses
 
     %% --- 합성 (Composition): User → Value Objects ---
     User *-- "1" UserId : -userId
@@ -325,7 +363,8 @@ classDiagram
     
     %% Application
     style UserService fill:#c8e6c9,stroke:#2e7d32,stroke-width:3px,color:#000
-    
+    style AuthenticationService fill:#c8e6c9,stroke:#2e7d32,stroke-width:3px,color:#000
+
     %% Domain - Aggregate Root
     style User fill:#ffecb3,stroke:#ff6f00,stroke-width:3px,color:#000
     
@@ -601,6 +640,7 @@ classDiagram
     class ErrorType {
         <<enumeration>>
         INTERNAL_ERROR
+        UNAUTHORIZED
         BAD_REQUEST
         NOT_FOUND
         CONFLICT
@@ -637,35 +677,40 @@ classDiagram
 ### 전체 흐름도
 
 ```
-┌─────────────────────────────────────┐
-│   Interface Layer                    │
-│   (UserController, DTOs)             │ ← REST API 엔드포인트
-├─────────────────────────────────────┤
-│   Application Layer                  │
-│   (UseCases, UserService)            │ ← 비즈니스 로직
-├─────────────────────────────────────┤
-│   Domain Layer                       │
-│   (User, Value Objects, Ports)       │ ← 핵심 도메인
-├─────────────────────────────────────┤
-│   Infrastructure Layer               │
-│   (Adapters)                         │ ← 기술 구현
-├─────────────────────────────────────┤
-│   Persistence Layer                  │
-│   (JPA, Entity)                      │ ← 데이터베이스
-└─────────────────────────────────────┘
+┌─────────────────────────────────────────────┐
+│   Interface Layer                            │
+│   (Interceptor, Controller, Config, DTOs)    │ ← REST API + 인증
+├─────────────────────────────────────────────┤
+│   Application Layer                          │
+│   (UseCases, UserService,                    │
+│    AuthenticationService)                    │ ← 비즈니스 로직
+├─────────────────────────────────────────────┤
+│   Domain Layer                               │
+│   (User, Value Objects, Ports)               │ ← 핵심 도메인
+├─────────────────────────────────────────────┤
+│   Infrastructure Layer                       │
+│   (Adapters)                                 │ ← 기술 구현
+├─────────────────────────────────────────────┤
+│   Persistence Layer                          │
+│   (JPA, Entity)                              │ ← 데이터베이스
+└─────────────────────────────────────────────┘
 ```
 
-### 요청 처리 흐름 예시
+### 요청 처리 흐름 예시 (인증 필요 API)
 
-1. **HTTP Request** → `UserController.register()`
+1. **HTTP Request** → `AuthenticationInterceptor.preHandle()`
+2. **Interceptor** → 헤더에서 `X-Loopers-LoginId`, `X-Loopers-LoginPw` 추출
+3. **Interceptor** → `AuthenticationUseCase.authenticate()` 호출
+4. **인증 성공** → `request.setAttribute("authenticatedUserId", userId)`
+5. **Controller** → `request.getAttribute("authenticatedUserId")`로 UserId 획득
+6. **Controller** → `UserQueryUseCase.getUserInfo(userId)` 호출
+7. **Service** → Domain 로직 실행 → Repository 호출 → 응답 반환
+
+### 요청 처리 흐름 예시 (인증 불필요 API)
+
+1. **HTTP Request** → `UserController.register()` (Interceptor 미적용)
 2. **Controller** → `RegisterUseCase.register()` 호출
-3. **UseCase** → `UserService.register()` 실행
-4. **Service** → `User.register()` (도메인 로직)
-5. **Service** → `UserRepository.save()` 호출 (Domain Port)
-6. **Repository** → `UserRepositoryImpl.save()` 실행 (Adapter)
-7. **Adapter** → `UserJpaRepository.save()` 실행 (JPA)
-8. **JPA** → 데이터베이스에 저장
-9. 역순으로 응답 반환
+3. **Service** → `User.register()` → `UserRepository.save()` → 응답 반환
 
 ### 의존성 방향
 
