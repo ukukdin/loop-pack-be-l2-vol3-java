@@ -22,11 +22,15 @@ public class AuthenticationService implements AuthenticationUseCase {
 
     @Override
     public void authenticate(UserId userId, String rawPassword) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+        User user = findUser(userId);
 
         if (!passwordEncoder.matches(rawPassword, user.getEncodedPassword())) {
             throw new IllegalArgumentException("비밀번호가 일치하지 않습니다.");
         }
+    }
+
+    private User findUser(UserId userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
     }
 }

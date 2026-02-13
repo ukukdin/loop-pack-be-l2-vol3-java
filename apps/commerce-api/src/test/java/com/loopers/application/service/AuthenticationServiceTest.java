@@ -11,6 +11,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
+import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.*;
 
@@ -19,6 +20,8 @@ class AuthenticationServiceTest {
     private UserRepository userRepository;
     private PasswordEncoder passwordEncoder;
     private AuthenticationService service;
+
+    private static final LocalDate BIRTHDAY = LocalDate.of(1990, 5, 15);
 
     @BeforeEach
     void setUp() {
@@ -34,23 +37,14 @@ class AuthenticationServiceTest {
         UserId userId = UserId.of("test1234");
         String rawPassword = "Password1!";
         String encodedPassword = "encoded_password";
-
-        User user = User.reconstitute(
-                1L,
-                userId,
-                UserName.of("홍길동"),
-                encodedPassword,
-                Birthday.of(LocalDate.of(1990, 5, 15)),
-                Email.of("test@example.com"),
-                WrongPasswordCount.init(),
-                LocalDateTime.now()
-        );
+        User user = createUser(userId, encodedPassword);
 
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
         when(passwordEncoder.matches(rawPassword, encodedPassword)).thenReturn(true);
 
-        // when & then - 예외가 발생하지 않으면 성공
-        service.authenticate(userId, rawPassword);
+        // when & then
+        assertThatNoException()
+                .isThrownBy(() -> service.authenticate(userId, rawPassword));
 
         verify(userRepository).findById(userId);
         verify(passwordEncoder).matches(rawPassword, encodedPassword);
@@ -77,17 +71,7 @@ class AuthenticationServiceTest {
         UserId userId = UserId.of("test1234");
         String wrongPassword = "WrongPassword1!";
         String encodedPassword = "encoded_password";
-
-        User user = User.reconstitute(
-                1L,
-                userId,
-                UserName.of("홍길동"),
-                encodedPassword,
-                Birthday.of(LocalDate.of(1990, 5, 15)),
-                Email.of("test@example.com"),
-                WrongPasswordCount.init(),
-                LocalDateTime.now()
-        );
+        User user = createUser(userId, encodedPassword);
 
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
         when(passwordEncoder.matches(wrongPassword, encodedPassword)).thenReturn(false);
@@ -96,5 +80,18 @@ class AuthenticationServiceTest {
         assertThatThrownBy(() -> service.authenticate(userId, wrongPassword))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("비밀번호가 일치하지 않습니다");
+    }
+
+    private User createUser(UserId userId, String encodedPassword) {
+        return User.reconstitute(
+                1L,
+                userId,
+                UserName.of("홍길동"),
+                encodedPassword,
+                Birthday.of(BIRTHDAY),
+                Email.of("test@example.com"),
+                WrongPasswordCount.init(),
+                LocalDateTime.now()
+        );
     }
 }
