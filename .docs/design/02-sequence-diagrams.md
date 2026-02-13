@@ -2,7 +2,7 @@
 
 모든 핵심 기능(회원가입, 인증, 조회, 어드민 등록)에 대해 **객체의 역할과 책임(Responsibility)**이 명확히 드러나도록 시퀀스 다이어그램을 작성했습니다.
 
-단순한 `Service` 하나가 모든 일을 다 하는 것이 아니라, **인증(Authentication), 값 객체 검증(Value Object), 암호화(Encoder), 조회(Query)** 등의 책임이 분리된 구조입니다.
+단순한 `Service` 하나가 모든 일을 다 하는 것이 아니라, **인증 전처리(AuthenticationInterceptor), 인증 서비스(AuthenticationService), 값 객체 검증(Value Object), 암호화(Encoder), 조회(Query)** 등의 책임이 분리된 구조입니다.
 
 | Flow | 핵심 책임 |
 |------|-----------|
@@ -21,7 +21,9 @@
 | 객체 | 책임 |
 |------|------|
 | `UserController` | HTTP 요청 수신 및 UseCase 위임 |
-| `UserService` | 회원가입, 인증, 정보 조회, 비밀번호 변경 통합 서비스 |
+| `AuthenticationInterceptor` | 인증 필요 API의 헤더 기반 인증 전처리 |
+| `AuthenticationService` | 사용자 인증 (비밀번호 매칭) |
+| `UserService` | 회원가입, 정보 조회, 비밀번호 변경 서비스 |
 | `PasswordEncoder` | 비밀번호 암호화 및 매칭 (SHA-256) |
 | `UserRepository` | 중복 ID 체크 및 사용자 영속화 |
 
@@ -88,45 +90,46 @@ sequenceDiagram
     autonumber
     actor User as 👤 User
     participant API as 🌐 UserController
-    participant Auth as 🔐 UserService
-    participant Query as 🔍 UserService
-    participant Encoder as 🛡️ PasswordEncoder
+    participant Interceptor as 🔐 AuthenticationInterceptor
+    participant AuthService as 🔑 AuthenticationService
+    participant Service as 🔍 UserService
     participant DB as 💾 UserRepository
 
     User->>API: GET /api/v1/users/me (Header: X-Loopers-LoginId, X-Loopers-LoginPw)
 
-    alt 필수 헤더 누락
-        API-->>User: 400 Bad Request ("필수 헤더가 누락되었습니다")
-    end
-
     rect rgb(255, 230, 230)
-        Note right of API: [책임 1] 헤더 기반 인증
-        API->>Auth: authenticate(userId, rawPassword)
-        Auth->>DB: findById(userId)
+        Note right of Interceptor: [책임 1] Interceptor preHandle — 헤더 기반 인증
+        Interceptor->>Interceptor: 헤더에서 loginId, password 추출
+        alt 필수 헤더 누락
+            Interceptor-->>User: 401 Unauthorized ("필수 헤더가 누락되었습니다")
+        end
+        Interceptor->>AuthService: authenticate(loginId, rawPassword)
+        AuthService->>DB: findById(loginId)
         alt 유저 없음
-            DB-->>Auth: Optional.empty()
-            Auth-->>API: throw IllegalArgumentException("사용자를 찾을 수 없습니다.")
-            API-->>User: 400 Bad Request
+            DB-->>AuthService: Optional.empty()
+            AuthService-->>Interceptor: throw IllegalArgumentException("사용자를 찾을 수 없습니다.")
+            Interceptor-->>User: 401 Unauthorized
         else 유저 존재
-            DB-->>Auth: User
+            DB-->>AuthService: User
         end
-        Auth->>Encoder: matches(rawPassword, encodedPassword)
+        AuthService->>AuthService: passwordEncoder.matches(rawPassword, encodedPassword)
         alt 비밀번호 불일치
-            Encoder-->>Auth: false
-            Auth-->>API: throw IllegalArgumentException("비밀번호가 일치하지 않습니다.")
-            API-->>User: 400 Bad Request
+            AuthService-->>Interceptor: throw IllegalArgumentException("비밀번호가 일치하지 않습니다.")
+            Interceptor-->>User: 401 Unauthorized
         else 비밀번호 일치
-            Encoder-->>Auth: true
+            AuthService-->>Interceptor: userId
         end
+        Interceptor->>Interceptor: request.setAttribute("authenticatedUserId", userId)
     end
 
     rect rgb(240, 248, 255)
         Note right of API: [책임 2] 사용자 정보 조회
-        API->>Query: getUserInfo(userId)
-        Query->>DB: findById(userId)
-        DB-->>Query: User
-        Note right of Query: 이름 마스킹: "홍길동" → "홍길*"
-        Query-->>API: UserInfoResponse(loginId, maskedName, birthday, email)
+        API->>API: userId = request.getAttribute("authenticatedUserId")
+        API->>Service: getUserInfo(userId)
+        Service->>DB: findById(userId)
+        DB-->>Service: User
+        Note right of Service: 이름 마스킹: "홍길동" → "홍길*"
+        Service-->>API: UserInfoResponse(loginId, maskedName, birthday, email)
     end
 
     API->>API: UserInfoResponse.from(userInfo) — birthday → "yyyyMMdd" 포맷
@@ -140,8 +143,9 @@ sequenceDiagram
     autonumber
     actor User as 👤 User
     participant API as 🌐 UserController
-    participant Auth as 🔐 UserService
-    participant Service as 🔑 UserService
+    participant Interceptor as 🔐 AuthenticationInterceptor
+    participant AuthService as 🔑 AuthenticationService
+    participant Service as 📦 UserService
     participant VO as 🔒 Value Objects
     participant Encoder as 🛡️ PasswordEncoder
     participant DB as 💾 UserRepository
@@ -149,16 +153,22 @@ sequenceDiagram
     User->>API: PUT /api/v1/users/me/password (Header: X-Loopers-LoginId, X-Loopers-LoginPw, Body: currentPassword, newPassword)
 
     rect rgb(255, 230, 230)
-        Note right of API: [책임 1] 헤더 기반 인증
-        API->>Auth: authenticate(userId, rawPassword)
-        Auth->>DB: findById(userId)
-        Auth->>Encoder: matches(rawPassword, encodedPassword)
-        alt 인증 실패
-            Auth-->>API: throw IllegalArgumentException
-            API-->>User: 400 Bad Request
+        Note right of Interceptor: [책임 1] Interceptor preHandle — 헤더 기반 인증
+        Interceptor->>Interceptor: 헤더에서 loginId, password 추출
+        alt 필수 헤더 누락
+            Interceptor-->>User: 401 Unauthorized ("필수 헤더가 누락되었습니다")
         end
+        Interceptor->>AuthService: authenticate(loginId, rawPassword)
+        alt 인증 실패 (유저 없음 또는 비밀번호 불일치)
+            AuthService-->>Interceptor: throw IllegalArgumentException
+            Interceptor-->>User: 401 Unauthorized
+        else 인증 성공
+            AuthService-->>Interceptor: userId
+        end
+        Interceptor->>Interceptor: request.setAttribute("authenticatedUserId", userId)
     end
 
+    API->>API: userId = request.getAttribute("authenticatedUserId")
     API->>Service: updatePassword(userId, currentPassword, newPassword)
 
     rect rgb(240, 248, 255)
@@ -324,7 +334,8 @@ sequenceDiagram
 | 객체 | 책임 |
 |------|------|
 | `LikeController` | HTTP 요청 수신 및 UseCase 위임 |
-| `UserService` | 헤더 기반 인증 (사용자 조회, 비밀번호 매칭) |
+| `AuthenticationInterceptor` | 인증 필요 API의 헤더 기반 인증 전처리 |
+| `AuthenticationService` | 사용자 인증 (비밀번호 매칭) |
 | `LikeService` | 좋아요 등록/취소 오케스트레이션 (멱등성 보장) |
 | `ProductRepository` | 상품 존재 여부 확인 |
 | `LikeRepository` | 좋아요 데이터 영속화 및 중복 확인 |
@@ -336,7 +347,8 @@ sequenceDiagram
     autonumber
     actor User as 👤 User
     participant API as 🌐 LikeController
-    participant Auth as 🔐 UserService
+    participant Interceptor as 🔐 AuthenticationInterceptor
+    participant AuthService as 🔑 AuthenticationService
     participant Service as ❤️ LikeService
     participant ProductDB as 💾 ProductRepository
     participant LikeDB as 💾 LikeRepository
@@ -344,14 +356,22 @@ sequenceDiagram
     User->>API: POST /api/v1/products/{productId}/likes (Header: X-Loopers-LoginId, X-Loopers-LoginPw)
 
     rect rgb(255, 230, 230)
-        Note right of API: [책임 1] 헤더 기반 인증
-        API->>Auth: authenticate(userId, rawPassword)
-        alt 인증 실패
-            Auth-->>API: throw IllegalArgumentException
-            API-->>User: 400 Bad Request
+        Note right of Interceptor: [책임 1] Interceptor preHandle — 헤더 기반 인증
+        Interceptor->>Interceptor: 헤더에서 loginId, password 추출
+        alt 필수 헤더 누락
+            Interceptor-->>User: 401 Unauthorized
         end
+        Interceptor->>AuthService: authenticate(loginId, rawPassword)
+        alt 인증 실패
+            AuthService-->>Interceptor: throw IllegalArgumentException
+            Interceptor-->>User: 401 Unauthorized
+        else 인증 성공
+            AuthService-->>Interceptor: userId
+        end
+        Interceptor->>Interceptor: request.setAttribute("authenticatedUserId", userId)
     end
 
+    API->>API: userId = request.getAttribute("authenticatedUserId")
     API->>Service: addLike(userId, productId)
 
     rect rgb(240, 248, 255)
@@ -396,21 +416,30 @@ sequenceDiagram
     autonumber
     actor User as 👤 User
     participant API as 🌐 LikeController
-    participant Auth as 🔐 UserService
+    participant Interceptor as 🔐 AuthenticationInterceptor
+    participant AuthService as 🔑 AuthenticationService
     participant Service as ❤️ LikeService
     participant LikeDB as 💾 LikeRepository
 
     User->>API: DELETE /api/v1/products/{productId}/likes (Header: X-Loopers-LoginId, X-Loopers-LoginPw)
 
     rect rgb(255, 230, 230)
-        Note right of API: [책임 1] 헤더 기반 인증
-        API->>Auth: authenticate(userId, rawPassword)
-        alt 인증 실패
-            Auth-->>API: throw IllegalArgumentException
-            API-->>User: 400 Bad Request
+        Note right of Interceptor: [책임 1] Interceptor preHandle — 헤더 기반 인증
+        Interceptor->>Interceptor: 헤더에서 loginId, password 추출
+        alt 필수 헤더 누락
+            Interceptor-->>User: 401 Unauthorized
         end
+        Interceptor->>AuthService: authenticate(loginId, rawPassword)
+        alt 인증 실패
+            AuthService-->>Interceptor: throw IllegalArgumentException
+            Interceptor-->>User: 401 Unauthorized
+        else 인증 성공
+            AuthService-->>Interceptor: userId
+        end
+        Interceptor->>Interceptor: request.setAttribute("authenticatedUserId", userId)
     end
 
+    API->>API: userId = request.getAttribute("authenticatedUserId")
     API->>Service: cancelLike(userId, productId)
 
     rect rgb(240, 248, 255)
@@ -443,7 +472,8 @@ sequenceDiagram
 | 객체 | 책임 |
 |------|------|
 | `OrderController` | HTTP 요청 수신 및 UseCase 위임 |
-| `UserService` | 헤더 기반 인증 (사용자 조회, 비밀번호 매칭) |
+| `AuthenticationInterceptor` | 인증 필요 API의 헤더 기반 인증 전처리 |
+| `AuthenticationService` | 사용자 인증 (비밀번호 매칭) |
 | `OrderCreateService` | 주문 생성 오케스트레이션 (재고 확인, 스냅샷) |
 | `OrderCancelService` | 주문 취소 처리 (상태 검증, 재고 복원) |
 | `ProductRepository` | 재고 확인 및 차감 |
@@ -456,7 +486,8 @@ sequenceDiagram
     autonumber
     actor User as 👤 User
     participant API as 🌐 OrderController
-    participant Auth as 🔐 UserService
+    participant Interceptor as 🔐 AuthenticationInterceptor
+    participant AuthService as 🔑 AuthenticationService
     participant Service as 🛒 OrderCreateService
     participant ProductDB as 💾 ProductRepository
     participant OrderDB as 💾 OrderRepository
@@ -464,14 +495,22 @@ sequenceDiagram
     User->>API: POST /api/v1/orders (Header: X-Loopers-LoginId, X-Loopers-LoginPw, Body: items, deliveryInfo, paymentMethod)
 
     rect rgb(255, 230, 230)
-        Note right of API: [책임 1] 헤더 기반 인증
-        API->>Auth: authenticate(userId, rawPassword)
-        alt 인증 실패
-            Auth-->>API: throw IllegalArgumentException
-            API-->>User: 400 Bad Request
+        Note right of Interceptor: [책임 1] Interceptor preHandle — 헤더 기반 인증
+        Interceptor->>Interceptor: 헤더에서 loginId, password 추출
+        alt 필수 헤더 누락
+            Interceptor-->>User: 401 Unauthorized
         end
+        Interceptor->>AuthService: authenticate(loginId, rawPassword)
+        alt 인증 실패
+            AuthService-->>Interceptor: throw IllegalArgumentException
+            Interceptor-->>User: 401 Unauthorized
+        else 인증 성공
+            AuthService-->>Interceptor: userId
+        end
+        Interceptor->>Interceptor: request.setAttribute("authenticatedUserId", userId)
     end
 
+    API->>API: userId = request.getAttribute("authenticatedUserId")
     API->>Service: createOrder(userId, orderRequest)
 
     rect rgb(240, 248, 255)
@@ -524,7 +563,8 @@ sequenceDiagram
     autonumber
     actor User as 👤 User
     participant API as 🌐 OrderController
-    participant Auth as 🔐 UserService
+    participant Interceptor as 🔐 AuthenticationInterceptor
+    participant AuthService as 🔑 AuthenticationService
     participant Service as 🛒 OrderCancelService
     participant OrderDB as 💾 OrderRepository
     participant ProductDB as 💾 ProductRepository
@@ -532,14 +572,22 @@ sequenceDiagram
     User->>API: POST /api/v1/orders/{orderId}/cancel (Header: X-Loopers-LoginId, X-Loopers-LoginPw)
 
     rect rgb(255, 230, 230)
-        Note right of API: [책임 1] 헤더 기반 인증
-        API->>Auth: authenticate(userId, rawPassword)
-        alt 인증 실패
-            Auth-->>API: throw IllegalArgumentException
-            API-->>User: 400 Bad Request
+        Note right of Interceptor: [책임 1] Interceptor preHandle — 헤더 기반 인증
+        Interceptor->>Interceptor: 헤더에서 loginId, password 추출
+        alt 필수 헤더 누락
+            Interceptor-->>User: 401 Unauthorized
         end
+        Interceptor->>AuthService: authenticate(loginId, rawPassword)
+        alt 인증 실패
+            AuthService-->>Interceptor: throw IllegalArgumentException
+            Interceptor-->>User: 401 Unauthorized
+        else 인증 성공
+            AuthService-->>Interceptor: userId
+        end
+        Interceptor->>Interceptor: request.setAttribute("authenticatedUserId", userId)
     end
 
+    API->>API: userId = request.getAttribute("authenticatedUserId")
     API->>Service: cancelOrder(userId, orderId)
 
     rect rgb(240, 248, 255)
