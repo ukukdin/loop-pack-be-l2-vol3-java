@@ -131,7 +131,6 @@ classDiagram
         -UserRepository userRepository
         -PasswordEncoder passwordEncoder
         +authenticate(UserId, String) void
-        -findUser(UserId) User
     }
 
     %% --- Interceptor → UseCase ---
@@ -183,7 +182,7 @@ classDiagram
 
 - **인증 관심사 분리**: `AuthenticationInterceptor`가 `/api/v1/users/me/**` 경로의 인증을 전담한다. Controller는 `AuthenticationUseCase`를 더 이상 알지 못하며, `HttpServletRequest`의 `authenticatedUserId` 속성에서 인증된 사용자를 꺼내 쓴다.
 - **Service 분리**: `UserService`는 Register, Query, PasswordUpdate만 구현하고, `AuthenticationService`가 인증만 전담한다. 향후 도메인(주문, 좋아요 등)이 추가되어도 각 도메인별 Service가 독립적으로 존재하는 패턴의 기반이 된다.
-- **Interceptor 등록**: `WebMvcConfig`가 `AuthenticationInterceptor`를 인증이 필요한 경로에만 등록한다. `/api/v1/users/register`는 인증 없이 접근 가능하다.
+- **Interceptor 등록**: `WebMvcConfig`가 `AuthenticationInterceptor`를 인증이 필요한 경로에만 등록한다. `POST /api/v1/users` (회원가입)는 인증 없이 접근 가능하다.
 
 ### 설계 의도
 
@@ -625,7 +624,6 @@ classDiagram
         <<RestControllerAdvice>>
         +handleCoreException(CoreException) ResponseEntity
         +handleIllegalArgumentException(IllegalArgumentException) ResponseEntity
-        +handleValidationException(MethodArgumentNotValidException) ResponseEntity
         +handleMissingHeaderException(MissingRequestHeaderException) ResponseEntity
         +handleException(Exception) ResponseEntity
     }
@@ -764,6 +762,7 @@ classDiagram
         +updateBrand(Long, BrandUpdateRequest) ResponseEntity
         +deleteBrand(Long) ResponseEntity
         +getBrands() ResponseEntity
+        +getBrand(Long) ResponseEntity
     }
     class BrandController {
         <<RestController>>
@@ -888,9 +887,12 @@ classDiagram
         -CreateProductUseCase createProductUseCase
         -UpdateProductUseCase updateProductUseCase
         -DeleteProductUseCase deleteProductUseCase
+        -ProductQueryUseCase productQueryUseCase
         +createProduct(ProductCreateRequest) ResponseEntity
         +updateProduct(Long, ProductUpdateRequest) ResponseEntity
         +deleteProduct(Long) ResponseEntity
+        +getProducts(ProductSearchCondition) ResponseEntity
+        +getProduct(Long) ResponseEntity
     }
     class ProductController {
         <<RestController>>
@@ -934,6 +936,7 @@ classDiagram
     ProductAdminController ..> CreateProductUseCase : uses
     ProductAdminController ..> UpdateProductUseCase : uses
     ProductAdminController ..> DeleteProductUseCase : uses
+    ProductAdminController ..> ProductQueryUseCase : uses
     ProductController ..> ProductQueryUseCase : uses
 
     ProductService ..|> CreateProductUseCase : implements
@@ -1149,6 +1152,7 @@ classDiagram
         <<RestController>>
         -OrderQueryUseCase orderQueryUseCase
         +getAllOrders(OrderSearchCondition) ResponseEntity
+        +getOrder(Long) ResponseEntity
     }
 
     class CreateOrderUseCase {

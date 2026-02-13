@@ -48,9 +48,9 @@
 
 | Role | Method | Endpoint | 기능 | 상세 로직 및 제약사항 |
 | :--- | :---: | :--- | :--- | :--- |
-| Guest | `POST` | `/users/register` | **회원가입** | ID 중복 체크 필수 |
-| User | `GET` | `/users/me` | **내 정보 조회** | 이름 마스킹 처리 |
-| User | `PUT` | `/users/me/password` | **비밀번호 변경** | 기존 비밀번호 확인 로직 포함 |
+| Guest | `POST` | `/api/v1/users` | **회원가입** | ID 중복 체크 필수 |
+| User | `GET` | `/api/v1/users/me` | **내 정보 조회** | 이름 마스킹 처리 |
+| User | `PUT` | `/api/v1/users/password` | **비밀번호 변경** | 기존 비밀번호 확인 로직 포함 |
 
 ####  상세 요구사항
 * **회원가입 입력값**: ID, PW, 이름, 생년월일, 이메일
@@ -67,9 +67,9 @@
 
 | Role | Method | Endpoint | 기능 | 상세 로직 및 제약사항 |
 | :--- | :---: | :--- | :--- | :--- |
-| Any | `GET` | `/brands/{brandId}` | **브랜드 조회** | 브랜드 정보 반환 |
-| Any | `GET` | `/products` | **상품 목록** | 필터, 정렬, 페이징 |
-| Any | `GET` | `/products/{productId}` | **상품 상세** | |
+| Any | `GET` | `/api/v1/brands/{brandId}` | **브랜드 조회** | 브랜드 정보 반환 |
+| Any | `GET` | `/api/v1/products` | **상품 목록** | 필터, 정렬, 페이징 |
+| Any | `GET` | `/api/v1/products/{productId}` | **상품 상세** | |
 
 #### 상세 요구사항
 * **목록 조회 쿼리 파라미터**:
@@ -83,9 +83,9 @@
 
 | Role | Method | Endpoint | 기능 | 상세 로직 및 제약사항 |
 | :--- | :---: | :--- | :--- | :--- |
-| User | `POST` | `/products/{id}/likes` | **좋아요 등록** | Idempotency 보장 |
-| User | `DELETE` | `/products/{id}/likes` | **좋아요 취소** | |
-| User | `GET` | `/users/me/likes` | **좋아요 목록** | 필터링 지원 |
+| User | `POST` | `/api/v1/products/{id}/likes` | **좋아요 등록** | Idempotency 보장 |
+| User | `DELETE` | `/api/v1/products/{id}/likes` | **좋아요 취소** | |
+| User | `GET` | `/api/v1/users/{userId}/likes` | **좋아요 목록** | 필터링 지원 |
 
 #### 상세 요구사항
 * **제약**: 유저당 1개의 상품에 1번만 좋아요 가능.
@@ -99,9 +99,9 @@
 
 | Role | Method | Endpoint | 기능 | 상세 로직 및 제약사항 |
 | :--- | :---: | :--- | :--- | :--- |
-| User | `POST` | `/orders` | **주문 요청** | 트랜잭션 처리 필수 |
-| User | `GET` | `/orders/me` | **내 주문 목록** | 기간 조회 |
-| User | `GET` | `/orders/{id}` | **주문 상세** | 영수증 데이터 포함 |
+| User | `POST` | `/api/v1/orders` | **주문 요청** | 트랜잭션 처리 필수 |
+| User | `GET` | `/api/v1/orders` | **내 주문 목록** | `startAt`, `endAt` 기간 필터 |
+| User | `GET` | `/api/v1/orders/{id}` | **주문 상세** | 영수증 데이터 포함 |
 
 #### 상세 요구사항
 1.  **주문 요청**:
@@ -122,13 +122,17 @@
 | Role | Method | Endpoint | 기능 | 상세 로직 및 제약사항 |
 | :--- | :---: | :--- | :--- | :--- |
 | Admin | `GET` | `/api-admin/v1/brands` | 브랜드 목록 | |
+| Admin | `GET` | `/api-admin/v1/brands/{brandId}` | 브랜드 상세 조회 | |
 | Admin | `POST` | `/api-admin/v1/brands` | 브랜드 등록 | |
 | Admin | `PUT` | `/api-admin/v1/brands/{id}` | 브랜드 수정 | |
 | Admin | `DELETE`| `/api-admin/v1/brands/{id}` | **브랜드 삭제** | **[Cascade]** 하위 상품 일괄 삭제 |
+| Admin | `GET` | `/api-admin/v1/products` | **상품 목록 조회** | 페이징, `brandId` 필터 |
+| Admin | `GET` | `/api-admin/v1/products/{productId}` | **상품 상세 조회** | |
 | Admin | `POST` | `/api-admin/v1/products` | **상품 등록** | 등록된 브랜드 ID만 허용 |
 | Admin | `PUT` | `/api-admin/v1/products/{id}`| **상품 수정** | **[Immutable]** 브랜드 변경 불가 |
 | Admin | `DELETE`| `/api-admin/v1/products/{id}`| 상품 삭제 | Soft Delete 권장 |
 | Admin | `GET` | `/api-admin/v1/orders` | 주문 목록 | 전체 유저 주문 조회 |
+| Admin | `GET` | `/api-admin/v1/orders/{orderId}` | 주문 상세 조회 | |
 
 ---
 
@@ -158,7 +162,6 @@
 | 코드 | HTTP 상태 | 설명 |
 | :--- | :---: | :--- |
 | `BAD_REQUEST` | 400 | 유효성 검사 실패, 인증 실패, ID 중복 등 |
-| `VALIDATION_ERROR` | 400 | DTO `@Valid` 어노테이션 검증 실패 |
 | `MISSING_HEADER` | 400 | 필수 헤더 누락 (`X-Loopers-LoginId` 등) |
 | `Not Found` | 404 | 존재하지 않는 리소스 |
 | `Conflict` | 409 | 비즈니스 로직 충돌 (리소스 중복 등) |
