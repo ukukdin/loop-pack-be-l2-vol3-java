@@ -182,7 +182,7 @@ class OrderQueryServiceTest {
 
     private Order createOrder(Long id, UserId userId, OrderStatus status) {
         List<OrderItem> items = List.of(
-                OrderItem.reconstitute(1L, 1L, 2, Money.of(50000))
+                OrderItem.reconstitute(1L, 1L, Quantity.of(2), Money.of(50000))
         );
         return Order.reconstitute(id, userId, items, null,
                 ReceiverName.of("홍길동"), Address.of("서울시 강남구"),

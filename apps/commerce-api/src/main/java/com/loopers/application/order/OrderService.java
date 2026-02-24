@@ -5,10 +5,10 @@ import com.loopers.domain.model.product.Product;
 import com.loopers.domain.model.user.UserId;
 import com.loopers.domain.repository.OrderRepository;
 import com.loopers.domain.repository.ProductRepository;
+import com.loopers.infrastructure.common.SpringDomainEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -17,51 +17,44 @@ public class OrderService implements CreateOrderUseCase, CancelOrderUseCase, Upd
 
     private final OrderRepository orderRepository;
     private final ProductRepository productRepository;
+    private final SpringDomainEventPublisher eventPublisher;
 
-    public OrderService(OrderRepository orderRepository, ProductRepository productRepository) {
+    public OrderService(OrderRepository orderRepository, ProductRepository productRepository,
+                        SpringDomainEventPublisher eventPublisher) {
         this.orderRepository = orderRepository;
         this.productRepository = productRepository;
+        this.eventPublisher = eventPublisher;
     }
 
     @Override
     public void createOrder(UserId userId, OrderCommand command) {
-        List<OrderItem> orderItems = new ArrayList<>();
-        StringBuilder snapshotBuilder = new StringBuilder();
+        List<OrderLine> orderLines = command.items().stream()
+                .map(itemCommand -> {
+                    Product product = productRepository.findById(itemCommand.productId())
+                            .filter(p -> !p.isDeleted())
+                            .orElseThrow(() -> new IllegalArgumentException("상품을 찾을 수 없습니다. ID: " + itemCommand.productId()));
 
-        for (OrderItemCommand itemCommand : command.items()) {
-            Product product = productRepository.findById(itemCommand.productId())
-                    .filter(p -> !p.isDeleted())
-                    .orElseThrow(() -> new IllegalArgumentException("상품을 찾을 수 없습니다. ID: " + itemCommand.productId()));
+                    Product decreased = product.decreaseStock(itemCommand.quantity());
+                    productRepository.save(decreased);
 
-            Product decreased = product.decreaseStock(itemCommand.quantity());
-            productRepository.save(decreased);
+                    return new OrderLine(
+                            product.getId(),
+                            product.getName().getValue(),
+                            Money.of(product.getPrice().getValue()),
+                            Quantity.of(itemCommand.quantity())
+                    );
+                })
+                .toList();
 
-            OrderItem orderItem = OrderItem.create(
-                    product.getId(),
-                    itemCommand.quantity(),
-                    Money.of(product.getPrice().getValue())
-            );
-            orderItems.add(orderItem);
-
-            snapshotBuilder.append(product.getName().getValue())
-                    .append(":")
-                    .append(product.getPrice().getValue())
-                    .append(",");
-        }
-
-        OrderSnapshot snapshot = OrderSnapshot.create(snapshotBuilder.toString());
         PaymentMethod paymentMethod = PaymentMethod.valueOf(command.paymentMethod());
-
         Order order = Order.create(
-                userId,
-                orderItems,
+                userId, orderLines,
                 ReceiverName.of(command.receiverName()),
                 Address.of(command.address()),
                 command.deliveryRequest(),
                 paymentMethod,
                 Money.zero(),
-                command.desiredDeliveryDate(),
-                snapshot
+                command.desiredDeliveryDate()
         );
 
         orderRepository.save(order);
@@ -75,13 +68,7 @@ public class OrderService implements CreateOrderUseCase, CancelOrderUseCase, Upd
 
         Order cancelled = order.cancel();
         orderRepository.save(cancelled);
-
-        for (OrderItem item : order.getItems()) {
-            Product product = productRepository.findById(item.getProductId())
-                    .orElseThrow(() -> new IllegalArgumentException("상품을 찾을 수 없습니다."));
-            Product restored = product.increaseStock(item.getQuantity());
-            productRepository.save(restored);
-        }
+        eventPublisher.publishEvents(cancelled);
     }
 
     @Override

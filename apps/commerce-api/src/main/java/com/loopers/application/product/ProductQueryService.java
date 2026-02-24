@@ -38,8 +38,8 @@ public class ProductQueryService implements ProductQueryUseCase {
                 product.getName().getValue(),
                 product.getPrice().getValue(),
                 product.getStock().getValue(),
-                product.getLikeCount(),
-                product.getDescription()
+                product.getLikeCount().getValue(),
+                product.getDescription() != null ? product.getDescription().getValue() : null
         );
     }
 
@@ -60,7 +60,7 @@ public class ProductQueryService implements ProductQueryUseCase {
                     brandName,
                     product.getName().getValue(),
                     product.getPrice().getValue(),
-                    product.getLikeCount()
+                    product.getLikeCount().getValue()
             );
         });
     }

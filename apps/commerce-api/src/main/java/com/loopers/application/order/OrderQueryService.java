@@ -92,7 +92,7 @@ public class OrderQueryService implements OrderQueryUseCase {
     private OrderItemDetail toOrderItemDetail(OrderItem item) {
         return new OrderItemDetail(
                 item.getProductId(),
-                item.getQuantity(),
+                item.getQuantity().getValue(),
                 item.getUnitPrice().getValue()
         );
     }

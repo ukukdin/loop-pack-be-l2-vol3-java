@@ -2,10 +2,7 @@ package com.loopers.application.product;
 
 import com.loopers.domain.model.brand.Brand;
 import com.loopers.domain.model.brand.BrandName;
-import com.loopers.domain.model.product.Price;
-import com.loopers.domain.model.product.Product;
-import com.loopers.domain.model.product.ProductName;
-import com.loopers.domain.model.product.Stock;
+import com.loopers.domain.model.product.*;
 import com.loopers.domain.repository.BrandRepository;
 import com.loopers.domain.repository.ProductRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -149,6 +146,7 @@ class ProductServiceTest {
 
     private Product createProduct(Long id, Long brandId) {
         return Product.reconstitute(id, brandId, ProductName.of("운동화"), Price.of(50000),
-                Stock.of(100), 0, "좋은 운동화", LocalDateTime.now(), LocalDateTime.now(), null);
+                Stock.of(100), LikeCount.zero(), Description.ofNullable("좋은 운동화"),
+                LocalDateTime.now(), LocalDateTime.now(), null);
     }
 }

@@ -1,9 +1,6 @@
 package com.loopers.infrastructure.product;
 
-import com.loopers.domain.model.product.Price;
-import com.loopers.domain.model.product.Product;
-import com.loopers.domain.model.product.ProductName;
-import com.loopers.domain.model.product.Stock;
+import com.loopers.domain.model.product.*;
 import com.loopers.domain.repository.ProductRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -59,8 +56,8 @@ public class ProductRepositoryImpl implements ProductRepository {
                 product.getName().getValue(),
                 product.getPrice().getValue(),
                 product.getStock().getValue(),
-                product.getLikeCount(),
-                product.getDescription(),
+                product.getLikeCount().getValue(),
+                product.getDescription() != null ? product.getDescription().getValue() : null,
                 product.getCreatedAt(),
                 product.getUpdatedAt(),
                 product.getDeletedAt()
@@ -74,8 +71,8 @@ public class ProductRepositoryImpl implements ProductRepository {
                 ProductName.of(entity.getName()),
                 Price.of(entity.getPrice()),
                 Stock.of(entity.getStockQuantity()),
-                entity.getLikeCount(),
-                entity.getDescription(),
+                LikeCount.of(entity.getLikeCount()),
+                Description.ofNullable(entity.getDescription()),
                 entity.getCreatedAt(),
                 entity.getUpdatedAt(),
                 entity.getDeletedAt()

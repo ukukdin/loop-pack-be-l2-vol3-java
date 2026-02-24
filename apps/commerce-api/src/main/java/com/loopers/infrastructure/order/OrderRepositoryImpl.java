@@ -85,7 +85,7 @@ public class OrderRepositoryImpl implements OrderRepository {
         return new OrderItemJpaEntity(
                 item.getId(),
                 item.getProductId(),
-                item.getQuantity(),
+                item.getQuantity().getValue(),
                 item.getUnitPrice().getValue()
         );
     }
@@ -135,7 +135,7 @@ public class OrderRepositoryImpl implements OrderRepository {
         return OrderItem.reconstitute(
                 entity.getId(),
                 entity.getProductId(),
-                entity.getQuantity(),
+                Quantity.of(entity.getQuantity()),
                 Money.of(entity.getUnitPrice())
         );
     }

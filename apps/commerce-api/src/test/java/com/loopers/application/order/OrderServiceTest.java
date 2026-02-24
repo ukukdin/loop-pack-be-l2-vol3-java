@@ -5,9 +5,12 @@ import com.loopers.domain.model.product.Price;
 import com.loopers.domain.model.product.Product;
 import com.loopers.domain.model.product.ProductName;
 import com.loopers.domain.model.product.Stock;
+import com.loopers.domain.model.product.LikeCount;
+import com.loopers.domain.model.product.Description;
 import com.loopers.domain.model.user.UserId;
 import com.loopers.domain.repository.OrderRepository;
 import com.loopers.domain.repository.ProductRepository;
+import com.loopers.infrastructure.common.SpringDomainEventPublisher;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -26,13 +29,15 @@ class OrderServiceTest {
 
     private OrderRepository orderRepository;
     private ProductRepository productRepository;
+    private SpringDomainEventPublisher eventPublisher;
     private OrderService service;
 
     @BeforeEach
     void setUp() {
         orderRepository = mock(OrderRepository.class);
         productRepository = mock(ProductRepository.class);
-        service = new OrderService(orderRepository, productRepository);
+        eventPublisher = mock(SpringDomainEventPublisher.class);
+        service = new OrderService(orderRepository, productRepository, eventPublisher);
     }
 
     @Nested
@@ -108,22 +113,20 @@ class OrderServiceTest {
     class CancelOrder {
 
         @Test
-        @DisplayName("주문 취소 성공 - 재고 복원")
+        @DisplayName("주문 취소 성공 - 이벤트 발행")
         void cancelOrder_success() {
             // given
             UserId userId = UserId.of("test1234");
             Order order = createOrder(1L, userId, OrderStatus.PAYMENT_COMPLETED);
-            Product product = createProduct(1L, 50000, 98);
 
             when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
-            when(productRepository.findById(1L)).thenReturn(Optional.of(product));
 
             // when
             service.cancelOrder(userId, 1L);
 
             // then
             verify(orderRepository).save(any(Order.class));
-            verify(productRepository).save(any(Product.class));
+            verify(eventPublisher).publishEvents(any(Order.class));
         }
 
         @Test
@@ -212,12 +215,13 @@ class OrderServiceTest {
 
     private Product createProduct(Long id, int price, int stock) {
         return Product.reconstitute(id, 1L, ProductName.of("상품" + id), Price.of(price),
-                Stock.of(stock), 0, "설명", LocalDateTime.now(), LocalDateTime.now(), null);
+                Stock.of(stock), LikeCount.zero(), Description.ofNullable("설명"),
+                LocalDateTime.now(), LocalDateTime.now(), null);
     }
 
     private Order createOrder(Long id, UserId userId, OrderStatus status) {
         List<OrderItem> items = List.of(
-                OrderItem.reconstitute(1L, 1L, 2, Money.of(50000))
+                OrderItem.reconstitute(1L, 1L, Quantity.of(2), Money.of(50000))
         );
         return Order.reconstitute(id, userId, items, null,
                 ReceiverName.of("홍길동"), Address.of("서울시 강남구"),

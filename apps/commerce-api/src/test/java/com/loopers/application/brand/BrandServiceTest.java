@@ -2,12 +2,9 @@ package com.loopers.application.brand;
 
 import com.loopers.domain.model.brand.Brand;
 import com.loopers.domain.model.brand.BrandName;
-import com.loopers.domain.model.product.Price;
-import com.loopers.domain.model.product.Product;
-import com.loopers.domain.model.product.ProductName;
-import com.loopers.domain.model.product.Stock;
+import com.loopers.domain.model.product.*;
 import com.loopers.domain.repository.BrandRepository;
-import com.loopers.domain.repository.ProductRepository;
+import com.loopers.infrastructure.common.SpringDomainEventPublisher;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -24,14 +21,14 @@ import static org.mockito.Mockito.*;
 class BrandServiceTest {
 
     private BrandRepository brandRepository;
-    private ProductRepository productRepository;
+    private SpringDomainEventPublisher eventPublisher;
     private BrandService service;
 
     @BeforeEach
     void setUp() {
         brandRepository = mock(BrandRepository.class);
-        productRepository = mock(ProductRepository.class);
-        service = new BrandService(brandRepository, productRepository);
+        eventPublisher = mock(SpringDomainEventPublisher.class);
+        service = new BrandService(brandRepository, eventPublisher);
     }
 
     @Nested
@@ -102,38 +99,18 @@ class BrandServiceTest {
     class DeleteBrand {
 
         @Test
-        @DisplayName("브랜드 삭제 성공 - 하위 상품도 일괄 삭제")
-        void deleteBrand_success_cascadeProducts() {
+        @DisplayName("브랜드 삭제 성공 - 이벤트 발행")
+        void deleteBrand_success_eventPublished() {
             // given
             Brand brand = createBrand(1L, "나이키");
-            Product product1 = createProduct(1L, 1L);
-            Product product2 = createProduct(2L, 1L);
-
             when(brandRepository.findById(1L)).thenReturn(Optional.of(brand));
-            when(productRepository.findAllByBrandId(1L)).thenReturn(List.of(product1, product2));
 
             // when
             service.deleteBrand(1L);
 
             // then
             verify(brandRepository).save(any(Brand.class));
-            verify(productRepository, times(2)).save(any(Product.class));
-        }
-
-        @Test
-        @DisplayName("브랜드 삭제 - 하위 상품 없는 경우")
-        void deleteBrand_success_noProducts() {
-            // given
-            Brand brand = createBrand(1L, "나이키");
-            when(brandRepository.findById(1L)).thenReturn(Optional.of(brand));
-            when(productRepository.findAllByBrandId(1L)).thenReturn(List.of());
-
-            // when
-            service.deleteBrand(1L);
-
-            // then
-            verify(brandRepository).save(any(Brand.class));
-            verify(productRepository, never()).save(any(Product.class));
+            verify(eventPublisher).publishEvents(any(Brand.class));
         }
 
         @Test
@@ -190,10 +167,5 @@ class BrandServiceTest {
     private Brand createBrand(Long id, String name) {
         return Brand.reconstitute(id, BrandName.of(name), "설명",
                 LocalDateTime.now(), LocalDateTime.now(), null);
-    }
-
-    private Product createProduct(Long id, Long brandId) {
-        return Product.reconstitute(id, brandId, ProductName.of("상품" + id), Price.of(10000),
-                Stock.of(100), 0, "설명", LocalDateTime.now(), LocalDateTime.now(), null);
     }
 }

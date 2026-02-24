@@ -2,9 +2,8 @@ package com.loopers.application.brand;
 
 import com.loopers.domain.model.brand.Brand;
 import com.loopers.domain.model.brand.BrandName;
-import com.loopers.domain.model.product.Product;
 import com.loopers.domain.repository.BrandRepository;
-import com.loopers.domain.repository.ProductRepository;
+import com.loopers.infrastructure.common.SpringDomainEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,11 +14,11 @@ import java.util.List;
 public class BrandService implements CreateBrandUseCase, UpdateBrandUseCase, DeleteBrandUseCase, BrandQueryUseCase {
 
     private final BrandRepository brandRepository;
-    private final ProductRepository productRepository;
+    private final SpringDomainEventPublisher eventPublisher;
 
-    public BrandService(BrandRepository brandRepository, ProductRepository productRepository) {
+    public BrandService(BrandRepository brandRepository, SpringDomainEventPublisher eventPublisher) {
         this.brandRepository = brandRepository;
-        this.productRepository = productRepository;
+        this.eventPublisher = eventPublisher;
     }
 
     @Override
@@ -47,11 +46,7 @@ public class BrandService implements CreateBrandUseCase, UpdateBrandUseCase, Del
         Brand brand = findBrand(brandId);
         Brand deleted = brand.delete();
         brandRepository.save(deleted);
-
-        List<Product> products = productRepository.findAllByBrandId(brandId);
-        for (Product product : products) {
-            productRepository.save(product.delete());
-        }
+        eventPublisher.publishEvents(deleted);
     }
 
     @Override

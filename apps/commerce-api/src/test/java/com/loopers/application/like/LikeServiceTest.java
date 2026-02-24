@@ -1,17 +1,16 @@
 package com.loopers.application.like;
 
 import com.loopers.domain.model.like.Like;
-import com.loopers.domain.model.product.Price;
-import com.loopers.domain.model.product.Product;
-import com.loopers.domain.model.product.ProductName;
-import com.loopers.domain.model.product.Stock;
+import com.loopers.domain.model.product.*;
 import com.loopers.domain.model.user.UserId;
 import com.loopers.domain.repository.LikeRepository;
 import com.loopers.domain.repository.ProductRepository;
+import com.loopers.infrastructure.common.SpringDomainEventPublisher;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -25,13 +24,18 @@ class LikeServiceTest {
 
     private LikeRepository likeRepository;
     private ProductRepository productRepository;
+    private SpringDomainEventPublisher domainEventPublisher;
+    private ApplicationEventPublisher applicationEventPublisher;
     private LikeService service;
 
     @BeforeEach
     void setUp() {
         likeRepository = mock(LikeRepository.class);
         productRepository = mock(ProductRepository.class);
-        service = new LikeService(likeRepository, productRepository);
+        domainEventPublisher = mock(SpringDomainEventPublisher.class);
+        applicationEventPublisher = mock(ApplicationEventPublisher.class);
+        service = new LikeService(likeRepository, productRepository,
+                domainEventPublisher, applicationEventPublisher);
     }
 
     @Nested
@@ -53,7 +57,7 @@ class LikeServiceTest {
 
             // then
             verify(likeRepository).save(any(Like.class));
-            verify(productRepository).save(any(Product.class));
+            verify(domainEventPublisher).publishEvents(any(Like.class));
         }
 
         @Test
@@ -71,7 +75,7 @@ class LikeServiceTest {
 
             // then
             verify(likeRepository, never()).save(any(Like.class));
-            verify(productRepository, never()).save(any(Product.class));
+            verify(domainEventPublisher, never()).publishEvents(any());
         }
 
         @Test
@@ -107,7 +111,7 @@ class LikeServiceTest {
 
             // then
             verify(likeRepository).deleteByUserIdAndProductId(userId, 1L);
-            verify(productRepository).save(any(Product.class));
+            verify(applicationEventPublisher).publishEvent(any(Object.class));
         }
 
         @Test
@@ -125,7 +129,7 @@ class LikeServiceTest {
 
             // then
             verify(likeRepository, never()).deleteByUserIdAndProductId(any(), any());
-            verify(productRepository, never()).save(any(Product.class));
+            verify(applicationEventPublisher, never()).publishEvent(any(Object.class));
         }
     }
 
@@ -164,7 +168,7 @@ class LikeServiceTest {
 
             Product activeProduct = createProduct(1L, 5);
             Product deletedProduct = Product.reconstitute(2L, 1L, ProductName.of("삭제됨"),
-                    Price.of(10000), Stock.of(0), 0, "설명",
+                    Price.of(10000), Stock.of(0), LikeCount.zero(), Description.ofNullable("설명"),
                     LocalDateTime.now(), LocalDateTime.now(), LocalDateTime.now());
 
             when(likeRepository.findAllByUserId(userId)).thenReturn(List.of(like1, like2));
@@ -196,6 +200,7 @@ class LikeServiceTest {
 
     private Product createProduct(Long id, int likeCount) {
         return Product.reconstitute(id, 1L, ProductName.of("상품" + id), Price.of(10000),
-                Stock.of(100), likeCount, "설명", LocalDateTime.now(), LocalDateTime.now(), null);
+                Stock.of(100), LikeCount.of(likeCount), Description.ofNullable("설명"),
+                LocalDateTime.now(), LocalDateTime.now(), null);
     }
 }

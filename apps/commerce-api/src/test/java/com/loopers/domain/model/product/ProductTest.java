@@ -28,7 +28,7 @@ class ProductTest {
         assertThat(product.getName().getValue()).isEqualTo("에어맥스 90");
         assertThat(product.getPrice().getValue()).isEqualTo(139000);
         assertThat(product.getStock().getValue()).isEqualTo(50);
-        assertThat(product.getLikeCount()).isEqualTo(0);
+        assertThat(product.getLikeCount().getValue()).isEqualTo(0);
         assertThat(product.isDeleted()).isFalse();
     }
 
@@ -93,7 +93,7 @@ class ProductTest {
         Product product = createProduct();
         Product liked = product.increaseLikeCount();
 
-        assertThat(liked.getLikeCount()).isEqualTo(1);
+        assertThat(liked.getLikeCount().getValue()).isEqualTo(1);
     }
 
     @Test
@@ -102,7 +102,7 @@ class ProductTest {
         Product product = createProduct().increaseLikeCount();
         Product unliked = product.decreaseLikeCount();
 
-        assertThat(unliked.getLikeCount()).isEqualTo(0);
+        assertThat(unliked.getLikeCount().getValue()).isEqualTo(0);
     }
 
     @Test

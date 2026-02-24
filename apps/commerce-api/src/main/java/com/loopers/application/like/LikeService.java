@@ -1,10 +1,13 @@
 package com.loopers.application.like;
 
 import com.loopers.domain.model.like.Like;
+import com.loopers.domain.model.like.event.ProductUnlikedEvent;
 import com.loopers.domain.model.product.Product;
 import com.loopers.domain.model.user.UserId;
 import com.loopers.domain.repository.LikeRepository;
 import com.loopers.domain.repository.ProductRepository;
+import com.loopers.infrastructure.common.SpringDomainEventPublisher;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,39 +19,41 @@ public class LikeService implements LikeUseCase, UnlikeUseCase, LikeQueryUseCase
 
     private final LikeRepository likeRepository;
     private final ProductRepository productRepository;
+    private final SpringDomainEventPublisher domainEventPublisher;
+    private final ApplicationEventPublisher applicationEventPublisher;
 
-    public LikeService(LikeRepository likeRepository, ProductRepository productRepository) {
+    public LikeService(LikeRepository likeRepository, ProductRepository productRepository,
+                       SpringDomainEventPublisher domainEventPublisher,
+                       ApplicationEventPublisher applicationEventPublisher) {
         this.likeRepository = likeRepository;
         this.productRepository = productRepository;
+        this.domainEventPublisher = domainEventPublisher;
+        this.applicationEventPublisher = applicationEventPublisher;
     }
 
     @Override
     public void like(UserId userId, Long productId) {
-        Product product = findProduct(productId);
+        findProduct(productId);
 
         if (likeRepository.existsByUserIdAndProductId(userId, productId)) {
-            return; // Idempotency — 이미 좋아요한 경우 무시
+            return;
         }
 
         Like like = Like.create(userId, productId);
         likeRepository.save(like);
-
-        Product updated = product.increaseLikeCount();
-        productRepository.save(updated);
+        domainEventPublisher.publishEvents(like);
     }
 
     @Override
     public void unlike(UserId userId, Long productId) {
-        Product product = findProduct(productId);
+        findProduct(productId);
 
         if (!likeRepository.existsByUserIdAndProductId(userId, productId)) {
-            return; // 좋아요하지 않은 경우 무시
+            return;
         }
 
         likeRepository.deleteByUserIdAndProductId(userId, productId);
-
-        Product updated = product.decreaseLikeCount();
-        productRepository.save(updated);
+        applicationEventPublisher.publishEvent(new ProductUnlikedEvent(productId));
     }
 
     @Override

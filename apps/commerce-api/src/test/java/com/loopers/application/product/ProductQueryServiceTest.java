@@ -2,10 +2,7 @@ package com.loopers.application.product;
 
 import com.loopers.domain.model.brand.Brand;
 import com.loopers.domain.model.brand.BrandName;
-import com.loopers.domain.model.product.Price;
-import com.loopers.domain.model.product.Product;
-import com.loopers.domain.model.product.ProductName;
-import com.loopers.domain.model.product.Stock;
+import com.loopers.domain.model.product.*;
 import com.loopers.domain.repository.BrandRepository;
 import com.loopers.domain.repository.ProductRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -67,7 +64,8 @@ class ProductQueryServiceTest {
         void getProduct_fail_deleted() {
             // given
             Product deleted = Product.reconstitute(1L, 1L, ProductName.of("삭제됨"), Price.of(10000),
-                    Stock.of(0), 0, "설명", LocalDateTime.now(), LocalDateTime.now(), LocalDateTime.now());
+                    Stock.of(0), LikeCount.zero(), Description.ofNullable("설명"),
+                    LocalDateTime.now(), LocalDateTime.now(), LocalDateTime.now());
             when(productRepository.findById(1L)).thenReturn(Optional.of(deleted));
 
             // when & then
@@ -148,7 +146,8 @@ class ProductQueryServiceTest {
 
     private Product createProduct(Long id, Long brandId, String name, int price) {
         return Product.reconstitute(id, brandId, ProductName.of(name), Price.of(price),
-                Stock.of(100), 5, "설명", LocalDateTime.now(), LocalDateTime.now(), null);
+                Stock.of(100), LikeCount.of(5), Description.ofNullable("설명"),
+                LocalDateTime.now(), LocalDateTime.now(), null);
     }
 
     private Brand createBrand(Long id, String name) {

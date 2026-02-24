@@ -1,14 +1,13 @@
 package com.loopers.domain.model.brand;
 
-import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
+import com.loopers.domain.model.brand.event.BrandDeletedEvent;
+import com.loopers.domain.model.common.AggregateRoot;
 import lombok.Getter;
 
 import java.time.LocalDateTime;
 
 @Getter
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-public class Brand {
+public class Brand extends AggregateRoot {
 
     private final Long id;
     private final BrandName name;
@@ -16,6 +15,16 @@ public class Brand {
     private final LocalDateTime createdAt;
     private final LocalDateTime updatedAt;
     private final LocalDateTime deletedAt;
+
+    private Brand(Long id, BrandName name, String description,
+                  LocalDateTime createdAt, LocalDateTime updatedAt, LocalDateTime deletedAt) {
+        this.id = id;
+        this.name = name;
+        this.description = description;
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
+        this.deletedAt = deletedAt;
+    }
 
     public static Brand create(BrandName name, String description) {
         LocalDateTime now = LocalDateTime.now();
@@ -36,7 +45,10 @@ public class Brand {
         if (isDeleted()) {
             throw new IllegalStateException("이미 삭제된 브랜드입니다.");
         }
-        return new Brand(this.id, this.name, this.description, this.createdAt, this.updatedAt, LocalDateTime.now());
+        Brand deleted = new Brand(this.id, this.name, this.description,
+                this.createdAt, this.updatedAt, LocalDateTime.now());
+        deleted.registerEvent(new BrandDeletedEvent(this.id));
+        return deleted;
     }
 
     public boolean isDeleted() {

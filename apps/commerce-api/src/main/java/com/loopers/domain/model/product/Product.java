@@ -15,19 +15,20 @@ public class Product {
     private final ProductName name;
     private final Price price;
     private final Stock stock;
-    private final int likeCount;
-    private final String description;
+    private final LikeCount likeCount;
+    private final Description description;
     private final LocalDateTime createdAt;
     private final LocalDateTime updatedAt;
     private final LocalDateTime deletedAt;
 
     public static Product create(Long brandId, ProductName name, Price price, Stock stock, String description) {
         LocalDateTime now = LocalDateTime.now();
-        return new Product(null, brandId, name, price, stock, 0, description, now, now, null);
+        return new Product(null, brandId, name, price, stock, LikeCount.zero(),
+                Description.ofNullable(description), now, now, null);
     }
 
     public static Product reconstitute(Long id, Long brandId, ProductName name, Price price, Stock stock,
-                                       int likeCount, String description,
+                                       LikeCount likeCount, Description description,
                                        LocalDateTime createdAt, LocalDateTime updatedAt,
                                        LocalDateTime deletedAt) {
         return new Product(id, brandId, name, price, stock, likeCount, description, createdAt, updatedAt, deletedAt);
@@ -35,7 +36,7 @@ public class Product {
 
     public Product update(ProductName name, Price price, Stock stock, String description) {
         return new Product(this.id, this.brandId, name, price, stock, this.likeCount,
-                description, this.createdAt, LocalDateTime.now(), this.deletedAt);
+                Description.ofNullable(description), this.createdAt, LocalDateTime.now(), this.deletedAt);
     }
 
     public Product delete() {
@@ -59,15 +60,12 @@ public class Product {
     }
 
     public Product increaseLikeCount() {
-        return new Product(this.id, this.brandId, this.name, this.price, this.stock, this.likeCount + 1,
+        return new Product(this.id, this.brandId, this.name, this.price, this.stock, this.likeCount.increase(),
                 this.description, this.createdAt, this.updatedAt, this.deletedAt);
     }
 
     public Product decreaseLikeCount() {
-        if (this.likeCount <= 0) {
-            throw new IllegalStateException("좋아요 수는 0 미만이 될 수 없습니다.");
-        }
-        return new Product(this.id, this.brandId, this.name, this.price, this.stock, this.likeCount - 1,
+        return new Product(this.id, this.brandId, this.name, this.price, this.stock, this.likeCount.decrease(),
                 this.description, this.createdAt, this.updatedAt, this.deletedAt);
     }
 
