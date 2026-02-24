@@ -209,3 +209,62 @@ public class ProductController {
 - 도메인 불변식: `totalAmount = SUM(item.unitPrice * item.quantity)` 는 Order의 핵심 규칙
 - `paymentAmount = totalAmount - discountAmount` 도 내부에서 계산하여 정합성 보장
 - **process.md**: "도메인 객체는 비즈니스 규칙을 캡슐화해야 합니다"
+
+---
+
+## 13. Admin/User Interceptor 분리
+
+### 결정
+`AuthenticationInterceptor`(User)와 `AdminAuthenticationInterceptor`(Admin)를 별도 컴포넌트로 구현
+
+### 근거
+- **01-requirements.md 2.2절**: Admin(`X-Loopers-Ldap`)과 User(`X-Loopers-LoginId` + `X-Loopers-LoginPw`)는 완전히 다른 인증 체계
+- **06-admin-authentication.md**: Admin은 DB 조회 없이 헤더 값 일치만 확인, User 테이블 변경 불필요
+- 단일 책임 원칙: 각 Interceptor가 하나의 인증 방식만 담당
+- `WebMvcConfig`에서 경로 패턴으로 분리 등록: `/api/v1/**` → User, `/api-admin/v1/**` → Admin
+
+---
+
+## 14. Controller별 역할 분리 (Admin vs User)
+
+### 결정
+같은 도메인이라도 Admin Controller와 User Controller를 분리
+
+### 근거
+- **03-class-diagram Part E~H**: Brand, Product, Order 모두 Admin/User Controller 분리 설계
+- Admin은 CRUD 전체 접근, User는 조회만 접근 → 하나의 Controller에 혼재 시 인증 경로 관리 복잡
+- 엔드포인트 경로가 다름: `/api-admin/v1/brands` vs `/api/v1/brands`
+- 각 Controller가 필요한 UseCase만 의존하여 결합도 최소화
+
+| 도메인 | Admin Controller | User Controller |
+|--------|-----------------|-----------------|
+| Brand | `BrandAdminController` (CRUD) | `BrandController` (조회) |
+| Product | `ProductAdminController` (CUD+조회) | `ProductController` (조회) |
+| Like | - | `LikeController` (등록/취소) |
+| Order | - | `OrderController` (생성/조회) |
+
+---
+
+## 15. Interfaces DTO와 Application DTO 분리
+
+### 결정
+Request/Response DTO를 `interfaces/api/dto/`에 별도 정의, Application 레이어의 record와 `from()` 메서드로 변환
+
+### 근거
+- **process.md**: "API request, response DTO와 응용 레이어의 DTO는 분리해 작성"
+- Interfaces 레이어 변경(필드 추가/제거, 포맷 변경)이 Application 레이어에 전파되지 않음
+- 기존 `UserInfoResponse.from(UserQueryUseCase.UserInfoResponse)` 패턴 답습
+- `OrderCreateRequest.toCommand()`: DTO → Application Command 변환을 DTO 자체에 캡슐화
+
+---
+
+## 16. Infrastructure Layer: BaseEntity 미상속
+
+### 결정
+새로운 JPA Entity들이 `BaseEntity`를 상속하지 않고 자체 필드로 관리
+
+### 근거
+- 기존 `UserJpaEntity` 패턴 답습: 프로젝트 내 일관성 유지
+- `BaseEntity`는 `ZonedDateTime` 사용, 도메인 모델은 `LocalDateTime` 사용 → 타입 불일치
+- Like, OrderItem 등 `updated_at`/`deleted_at`가 불필요한 엔티티에 불필요한 컬럼 생성 방지
+- 각 Entity가 자신에게 필요한 필드만 정확히 가짐 → 명시적이고 예측 가능
