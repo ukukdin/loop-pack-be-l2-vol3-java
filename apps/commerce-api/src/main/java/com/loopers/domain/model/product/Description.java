@@ -8,6 +8,7 @@ import lombok.Getter;
 public class Description {
 
     private static final int MAX_LENGTH = 500;
+    private static final Description EMPTY = new Description(null);
 
     private final String value;
 
@@ -26,10 +27,22 @@ public class Description {
         return new Description(trimmed);
     }
 
+    public static Description empty() {
+        return EMPTY;
+    }
+
     public static Description ofNullable(String value) {
         if (value == null || value.isBlank()) {
-            return null;
+            return EMPTY;
         }
         return of(value);
+    }
+
+    public boolean isEmpty() {
+        return this.value == null;
+    }
+
+    public String getValueOrNull() {
+        return this.value;
     }
 }

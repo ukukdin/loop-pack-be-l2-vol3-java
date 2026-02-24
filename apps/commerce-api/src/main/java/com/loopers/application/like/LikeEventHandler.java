@@ -4,10 +4,8 @@ import com.loopers.domain.model.like.event.ProductLikedEvent;
 import com.loopers.domain.model.like.event.ProductUnlikedEvent;
 import com.loopers.domain.model.product.Product;
 import com.loopers.domain.repository.ProductRepository;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Propagation;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.event.TransactionalEventListener;
 
 @Component
 public class LikeEventHandler {
@@ -18,8 +16,7 @@ public class LikeEventHandler {
         this.productRepository = productRepository;
     }
 
-    @TransactionalEventListener
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @EventListener
     public void handle(ProductLikedEvent event) {
         Product product = productRepository.findById(event.productId())
                 .orElseThrow(() -> new IllegalArgumentException("상품을 찾을 수 없습니다."));
@@ -27,8 +24,7 @@ public class LikeEventHandler {
         productRepository.save(updated);
     }
 
-    @TransactionalEventListener
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @EventListener
     public void handle(ProductUnlikedEvent event) {
         Product product = productRepository.findById(event.productId())
                 .orElseThrow(() -> new IllegalArgumentException("상품을 찾을 수 없습니다."));

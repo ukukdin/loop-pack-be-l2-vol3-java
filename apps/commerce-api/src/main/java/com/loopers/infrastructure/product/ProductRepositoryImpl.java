@@ -57,7 +57,7 @@ public class ProductRepositoryImpl implements ProductRepository {
                 product.getPrice().getValue(),
                 product.getStock().getValue(),
                 product.getLikeCount().getValue(),
-                product.getDescription() != null ? product.getDescription().getValue() : null,
+                product.getDescription().getValueOrNull(),
                 product.getCreatedAt(),
                 product.getUpdatedAt(),
                 product.getDeletedAt()

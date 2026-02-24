@@ -10,7 +10,7 @@ import com.loopers.domain.model.product.Description;
 import com.loopers.domain.model.user.UserId;
 import com.loopers.domain.repository.OrderRepository;
 import com.loopers.domain.repository.ProductRepository;
-import com.loopers.infrastructure.common.SpringDomainEventPublisher;
+import com.loopers.domain.model.common.DomainEventPublisher;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -29,14 +29,14 @@ class OrderServiceTest {
 
     private OrderRepository orderRepository;
     private ProductRepository productRepository;
-    private SpringDomainEventPublisher eventPublisher;
+    private DomainEventPublisher eventPublisher;
     private OrderService service;
 
     @BeforeEach
     void setUp() {
         orderRepository = mock(OrderRepository.class);
         productRepository = mock(ProductRepository.class);
-        eventPublisher = mock(SpringDomainEventPublisher.class);
+        eventPublisher = mock(DomainEventPublisher.class);
         service = new OrderService(orderRepository, productRepository, eventPublisher);
     }
 

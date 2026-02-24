@@ -39,7 +39,7 @@ public class ProductQueryService implements ProductQueryUseCase {
                 product.getPrice().getValue(),
                 product.getStock().getValue(),
                 product.getLikeCount().getValue(),
-                product.getDescription() != null ? product.getDescription().getValue() : null
+                product.getDescription().getValueOrNull()
         );
     }
 

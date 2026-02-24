@@ -2,6 +2,7 @@ package com.loopers.domain.model.like;
 
 import com.loopers.domain.model.common.AggregateRoot;
 import com.loopers.domain.model.like.event.ProductLikedEvent;
+import com.loopers.domain.model.like.event.ProductUnlikedEvent;
 import com.loopers.domain.model.user.UserId;
 import lombok.Getter;
 
@@ -32,6 +33,11 @@ public class Like extends AggregateRoot {
         Like like = new Like(null, userId, productId, LocalDateTime.now());
         like.registerEvent(new ProductLikedEvent(productId));
         return like;
+    }
+
+    public Like markUnliked() {
+        registerEvent(new ProductUnlikedEvent(this.productId));
+        return this;
     }
 
     public static Like reconstitute(Long id, UserId userId, Long productId, LocalDateTime createdAt) {

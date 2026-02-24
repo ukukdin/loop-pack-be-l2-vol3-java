@@ -3,10 +3,8 @@ package com.loopers.application.brand;
 import com.loopers.domain.model.brand.event.BrandDeletedEvent;
 import com.loopers.domain.model.product.Product;
 import com.loopers.domain.repository.ProductRepository;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Propagation;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.event.TransactionalEventListener;
 
 import java.util.List;
 
@@ -19,8 +17,7 @@ public class BrandDeletedEventHandler {
         this.productRepository = productRepository;
     }
 
-    @TransactionalEventListener
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @EventListener
     public void handle(BrandDeletedEvent event) {
         List<Product> products = productRepository.findAllByBrandId(event.brandId());
         for (Product product : products) {

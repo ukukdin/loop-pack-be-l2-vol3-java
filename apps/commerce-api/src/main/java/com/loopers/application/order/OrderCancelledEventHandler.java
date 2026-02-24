@@ -3,10 +3,8 @@ package com.loopers.application.order;
 import com.loopers.domain.model.order.event.OrderCancelledEvent;
 import com.loopers.domain.model.product.Product;
 import com.loopers.domain.repository.ProductRepository;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Propagation;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.event.TransactionalEventListener;
 
 @Component
 public class OrderCancelledEventHandler {
@@ -17,8 +15,7 @@ public class OrderCancelledEventHandler {
         this.productRepository = productRepository;
     }
 
-    @TransactionalEventListener
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @EventListener
     public void handle(OrderCancelledEvent event) {
         for (OrderCancelledEvent.CancelledItem item : event.cancelledItems()) {
             Product product = productRepository.findById(item.productId())

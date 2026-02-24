@@ -2,8 +2,8 @@ package com.loopers.application.brand;
 
 import com.loopers.domain.model.brand.Brand;
 import com.loopers.domain.model.brand.BrandName;
+import com.loopers.domain.model.common.DomainEventPublisher;
 import com.loopers.domain.repository.BrandRepository;
-import com.loopers.infrastructure.common.SpringDomainEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -14,9 +14,9 @@ import java.util.List;
 public class BrandService implements CreateBrandUseCase, UpdateBrandUseCase, DeleteBrandUseCase, BrandQueryUseCase {
 
     private final BrandRepository brandRepository;
-    private final SpringDomainEventPublisher eventPublisher;
+    private final DomainEventPublisher eventPublisher;
 
-    public BrandService(BrandRepository brandRepository, SpringDomainEventPublisher eventPublisher) {
+    public BrandService(BrandRepository brandRepository, DomainEventPublisher eventPublisher) {
         this.brandRepository = brandRepository;
         this.eventPublisher = eventPublisher;
     }

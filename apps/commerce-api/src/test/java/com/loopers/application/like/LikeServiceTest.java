@@ -1,16 +1,15 @@
 package com.loopers.application.like;
 
+import com.loopers.domain.model.common.DomainEventPublisher;
 import com.loopers.domain.model.like.Like;
 import com.loopers.domain.model.product.*;
 import com.loopers.domain.model.user.UserId;
 import com.loopers.domain.repository.LikeRepository;
 import com.loopers.domain.repository.ProductRepository;
-import com.loopers.infrastructure.common.SpringDomainEventPublisher;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.springframework.context.ApplicationEventPublisher;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -24,18 +23,15 @@ class LikeServiceTest {
 
     private LikeRepository likeRepository;
     private ProductRepository productRepository;
-    private SpringDomainEventPublisher domainEventPublisher;
-    private ApplicationEventPublisher applicationEventPublisher;
+    private DomainEventPublisher domainEventPublisher;
     private LikeService service;
 
     @BeforeEach
     void setUp() {
         likeRepository = mock(LikeRepository.class);
         productRepository = mock(ProductRepository.class);
-        domainEventPublisher = mock(SpringDomainEventPublisher.class);
-        applicationEventPublisher = mock(ApplicationEventPublisher.class);
-        service = new LikeService(likeRepository, productRepository,
-                domainEventPublisher, applicationEventPublisher);
+        domainEventPublisher = mock(DomainEventPublisher.class);
+        service = new LikeService(likeRepository, productRepository, domainEventPublisher);
     }
 
     @Nested
@@ -102,16 +98,18 @@ class LikeServiceTest {
             // given
             UserId userId = UserId.of("test1234");
             Product product = createProduct(1L, 1);
+            Like like = Like.reconstitute(1L, userId, 1L, LocalDateTime.now());
 
             when(productRepository.findById(1L)).thenReturn(Optional.of(product));
             when(likeRepository.existsByUserIdAndProductId(userId, 1L)).thenReturn(true);
+            when(likeRepository.findByUserIdAndProductId(userId, 1L)).thenReturn(Optional.of(like));
 
             // when
             service.unlike(userId, 1L);
 
             // then
+            verify(domainEventPublisher).publishEvents(any(Like.class));
             verify(likeRepository).deleteByUserIdAndProductId(userId, 1L);
-            verify(applicationEventPublisher).publishEvent(any(Object.class));
         }
 
         @Test
@@ -129,7 +127,7 @@ class LikeServiceTest {
 
             // then
             verify(likeRepository, never()).deleteByUserIdAndProductId(any(), any());
-            verify(applicationEventPublisher, never()).publishEvent(any(Object.class));
+            verify(domainEventPublisher, never()).publishEvents(any());
         }
     }
 

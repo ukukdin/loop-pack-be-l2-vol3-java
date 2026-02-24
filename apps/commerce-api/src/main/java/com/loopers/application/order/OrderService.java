@@ -1,11 +1,11 @@
 package com.loopers.application.order;
 
+import com.loopers.domain.model.common.DomainEventPublisher;
 import com.loopers.domain.model.order.*;
 import com.loopers.domain.model.product.Product;
 import com.loopers.domain.model.user.UserId;
 import com.loopers.domain.repository.OrderRepository;
 import com.loopers.domain.repository.ProductRepository;
-import com.loopers.infrastructure.common.SpringDomainEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,10 +17,10 @@ public class OrderService implements CreateOrderUseCase, CancelOrderUseCase, Upd
 
     private final OrderRepository orderRepository;
     private final ProductRepository productRepository;
-    private final SpringDomainEventPublisher eventPublisher;
+    private final DomainEventPublisher eventPublisher;
 
     public OrderService(OrderRepository orderRepository, ProductRepository productRepository,
-                        SpringDomainEventPublisher eventPublisher) {
+                        DomainEventPublisher eventPublisher) {
         this.orderRepository = orderRepository;
         this.productRepository = productRepository;
         this.eventPublisher = eventPublisher;

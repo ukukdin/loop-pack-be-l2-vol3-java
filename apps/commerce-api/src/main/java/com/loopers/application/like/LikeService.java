@@ -1,13 +1,11 @@
 package com.loopers.application.like;
 
+import com.loopers.domain.model.common.DomainEventPublisher;
 import com.loopers.domain.model.like.Like;
-import com.loopers.domain.model.like.event.ProductUnlikedEvent;
 import com.loopers.domain.model.product.Product;
 import com.loopers.domain.model.user.UserId;
 import com.loopers.domain.repository.LikeRepository;
 import com.loopers.domain.repository.ProductRepository;
-import com.loopers.infrastructure.common.SpringDomainEventPublisher;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,16 +17,13 @@ public class LikeService implements LikeUseCase, UnlikeUseCase, LikeQueryUseCase
 
     private final LikeRepository likeRepository;
     private final ProductRepository productRepository;
-    private final SpringDomainEventPublisher domainEventPublisher;
-    private final ApplicationEventPublisher applicationEventPublisher;
+    private final DomainEventPublisher domainEventPublisher;
 
     public LikeService(LikeRepository likeRepository, ProductRepository productRepository,
-                       SpringDomainEventPublisher domainEventPublisher,
-                       ApplicationEventPublisher applicationEventPublisher) {
+                       DomainEventPublisher domainEventPublisher) {
         this.likeRepository = likeRepository;
         this.productRepository = productRepository;
         this.domainEventPublisher = domainEventPublisher;
-        this.applicationEventPublisher = applicationEventPublisher;
     }
 
     @Override
@@ -52,8 +47,11 @@ public class LikeService implements LikeUseCase, UnlikeUseCase, LikeQueryUseCase
             return;
         }
 
+        Like like = likeRepository.findByUserIdAndProductId(userId, productId)
+                .orElseThrow(() -> new IllegalArgumentException("좋아요를 찾을 수 없습니다."));
+        like.markUnliked();
+        domainEventPublisher.publishEvents(like);
         likeRepository.deleteByUserIdAndProductId(userId, productId);
-        applicationEventPublisher.publishEvent(new ProductUnlikedEvent(productId));
     }
 
     @Override

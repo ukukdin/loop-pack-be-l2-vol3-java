@@ -4,7 +4,7 @@ import com.loopers.domain.model.brand.Brand;
 import com.loopers.domain.model.brand.BrandName;
 import com.loopers.domain.model.product.*;
 import com.loopers.domain.repository.BrandRepository;
-import com.loopers.infrastructure.common.SpringDomainEventPublisher;
+import com.loopers.domain.model.common.DomainEventPublisher;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -21,13 +21,13 @@ import static org.mockito.Mockito.*;
 class BrandServiceTest {
 
     private BrandRepository brandRepository;
-    private SpringDomainEventPublisher eventPublisher;
+    private DomainEventPublisher eventPublisher;
     private BrandService service;
 
     @BeforeEach
     void setUp() {
         brandRepository = mock(BrandRepository.class);
-        eventPublisher = mock(SpringDomainEventPublisher.class);
+        eventPublisher = mock(DomainEventPublisher.class);
         service = new BrandService(brandRepository, eventPublisher);
     }
 
