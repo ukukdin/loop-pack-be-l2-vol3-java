@@ -5,7 +5,8 @@ public enum OrderStatus {
     PAYMENT_COMPLETED("결제완료"),
     PREPARING("상품준비중"),
     SHIPPING("배송중"),
-    DELIVERED("배송완료");
+    DELIVERED("배송완료"),
+    CANCELLED("주문취소");
 
     private final String description;
 

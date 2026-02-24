@@ -3,12 +3,9 @@ package com.loopers.infrastructure.order;
 import com.loopers.domain.model.order.*;
 import com.loopers.domain.model.user.UserId;
 import com.loopers.domain.repository.OrderRepository;
-import com.loopers.infrastructure.order.OrderItemJpaEntity;
-import com.loopers.infrastructure.order.OrderJpaEntity;
-import com.loopers.infrastructure.order.OrderSnapshotJpaEntity;
-import com.loopers.infrastructure.order.OrderJpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -37,6 +34,20 @@ public class OrderRepositoryImpl implements OrderRepository {
     @Override
     public List<Order> findAllByUserId(UserId userId) {
         return orderJpaRepository.findAllByUserId(userId.getValue()).stream()
+                .map(this::toDomain)
+                .toList();
+    }
+
+    @Override
+    public List<Order> findAllByUserIdAndDateRange(UserId userId, LocalDateTime startAt, LocalDateTime endAt) {
+        return orderJpaRepository.findAllByUserIdAndCreatedAtBetween(userId.getValue(), startAt, endAt).stream()
+                .map(this::toDomain)
+                .toList();
+    }
+
+    @Override
+    public List<Order> findAll() {
+        return orderJpaRepository.findAll().stream()
                 .map(this::toDomain)
                 .toList();
     }

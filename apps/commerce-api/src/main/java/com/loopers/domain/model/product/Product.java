@@ -52,6 +52,12 @@ public class Product {
                 this.description, this.createdAt, LocalDateTime.now(), this.deletedAt);
     }
 
+    public Product increaseStock(int quantity) {
+        Stock increased = this.stock.increase(quantity);
+        return new Product(this.id, this.brandId, this.name, this.price, increased, this.likeCount,
+                this.description, this.createdAt, LocalDateTime.now(), this.deletedAt);
+    }
+
     public Product increaseLikeCount() {
         return new Product(this.id, this.brandId, this.name, this.price, this.stock, this.likeCount + 1,
                 this.description, this.createdAt, this.updatedAt, this.deletedAt);

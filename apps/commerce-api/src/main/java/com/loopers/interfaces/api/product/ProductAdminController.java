@@ -4,9 +4,12 @@ import com.loopers.application.product.CreateProductUseCase;
 import com.loopers.application.product.DeleteProductUseCase;
 import com.loopers.application.product.ProductQueryUseCase;
 import com.loopers.application.product.UpdateProductUseCase;
+import com.loopers.interfaces.api.common.PageResponse;
 import com.loopers.interfaces.api.product.dto.ProductCreateRequest;
 import com.loopers.interfaces.api.product.dto.ProductDetailResponse;
+import com.loopers.interfaces.api.product.dto.ProductSummaryResponse;
 import com.loopers.interfaces.api.product.dto.ProductUpdateRequest;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -27,6 +30,16 @@ public class ProductAdminController {
         this.updateProductUseCase = updateProductUseCase;
         this.deleteProductUseCase = deleteProductUseCase;
         this.productQueryUseCase = productQueryUseCase;
+    }
+
+    @GetMapping
+    public ResponseEntity<PageResponse<ProductSummaryResponse>> getProducts(
+            @RequestParam(required = false) Long brandId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        Page<ProductQueryUseCase.ProductSummaryInfo> products =
+                productQueryUseCase.getProducts(brandId, null, page, size);
+        return ResponseEntity.ok(PageResponse.from(products, ProductSummaryResponse::from));
     }
 
     @PostMapping

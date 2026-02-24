@@ -68,7 +68,7 @@ public class Order {
         }
         return new Order(this.id, this.userId, this.items, this.snapshot, this.receiverName,
                 this.address, this.deliveryRequest, this.paymentMethod, this.totalAmount,
-                this.discountAmount, this.paymentAmount, OrderStatus.PAYMENT_COMPLETED,
+                this.discountAmount, this.paymentAmount, OrderStatus.CANCELLED,
                 this.desiredDeliveryDate, this.createdAt, LocalDateTime.now());
     }
 

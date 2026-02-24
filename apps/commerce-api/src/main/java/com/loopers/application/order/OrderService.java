@@ -1,6 +1,5 @@
 package com.loopers.application.order;
 
-import com.loopers.application.order.CreateOrderUseCase;
 import com.loopers.domain.model.order.*;
 import com.loopers.domain.model.product.Product;
 import com.loopers.domain.model.user.UserId;
@@ -14,7 +13,7 @@ import java.util.List;
 
 @Service
 @Transactional
-public class OrderService implements CreateOrderUseCase {
+public class OrderService implements CreateOrderUseCase, CancelOrderUseCase, UpdateDeliveryAddressUseCase {
 
     private final OrderRepository orderRepository;
     private final ProductRepository productRepository;
@@ -66,5 +65,32 @@ public class OrderService implements CreateOrderUseCase {
         );
 
         orderRepository.save(order);
+    }
+
+    @Override
+    public void cancelOrder(UserId userId, Long orderId) {
+        Order order = orderRepository.findById(orderId)
+                .filter(o -> o.getUserId().equals(userId))
+                .orElseThrow(() -> new IllegalArgumentException("주문을 찾을 수 없습니다."));
+
+        Order cancelled = order.cancel();
+        orderRepository.save(cancelled);
+
+        for (OrderItem item : order.getItems()) {
+            Product product = productRepository.findById(item.getProductId())
+                    .orElseThrow(() -> new IllegalArgumentException("상품을 찾을 수 없습니다."));
+            Product restored = product.increaseStock(item.getQuantity());
+            productRepository.save(restored);
+        }
+    }
+
+    @Override
+    public void updateDeliveryAddress(UserId userId, Long orderId, String newAddress) {
+        Order order = orderRepository.findById(orderId)
+                .filter(o -> o.getUserId().equals(userId))
+                .orElseThrow(() -> new IllegalArgumentException("주문을 찾을 수 없습니다."));
+
+        Order updated = order.updateDeliveryAddress(Address.of(newAddress));
+        orderRepository.save(updated);
     }
 }

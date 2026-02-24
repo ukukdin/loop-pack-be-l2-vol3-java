@@ -2,12 +2,19 @@ package com.loopers.application.order;
 
 import com.loopers.domain.model.user.UserId;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
 public interface OrderQueryUseCase {
 
     List<OrderSummary> getMyOrders(UserId userId);
+
+    List<OrderSummary> getMyOrders(UserId userId, LocalDate startAt, LocalDate endAt);
+
+    List<OrderSummary> getAllOrders();
+
+    OrderDetail getOrderDetail(Long orderId);
 
     OrderDetail getOrder(UserId userId, Long orderId);
 

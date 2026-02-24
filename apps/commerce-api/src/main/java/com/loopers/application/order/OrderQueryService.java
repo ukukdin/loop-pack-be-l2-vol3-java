@@ -1,6 +1,5 @@
 package com.loopers.application.order;
 
-import com.loopers.application.order.OrderQueryUseCase;
 import com.loopers.domain.model.order.Order;
 import com.loopers.domain.model.order.OrderItem;
 import com.loopers.domain.model.user.UserId;
@@ -8,6 +7,8 @@ import com.loopers.domain.repository.OrderRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 
 @Service
@@ -23,7 +24,41 @@ public class OrderQueryService implements OrderQueryUseCase {
     @Override
     public List<OrderSummary> getMyOrders(UserId userId) {
         List<Order> orders = orderRepository.findAllByUserId(userId);
+        return toSummaries(orders);
+    }
 
+    @Override
+    public List<OrderSummary> getMyOrders(UserId userId, LocalDate startAt, LocalDate endAt) {
+        List<Order> orders = orderRepository.findAllByUserIdAndDateRange(
+                userId,
+                startAt.atStartOfDay(),
+                endAt.atTime(LocalTime.MAX)
+        );
+        return toSummaries(orders);
+    }
+
+    @Override
+    public List<OrderSummary> getAllOrders() {
+        List<Order> orders = orderRepository.findAll();
+        return toSummaries(orders);
+    }
+
+    @Override
+    public OrderDetail getOrderDetail(Long orderId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("주문을 찾을 수 없습니다."));
+        return toOrderDetail(order);
+    }
+
+    @Override
+    public OrderDetail getOrder(UserId userId, Long orderId) {
+        Order order = orderRepository.findById(orderId)
+                .filter(o -> o.getUserId().equals(userId))
+                .orElseThrow(() -> new IllegalArgumentException("주문을 찾을 수 없습니다."));
+        return toOrderDetail(order);
+    }
+
+    private List<OrderSummary> toSummaries(List<Order> orders) {
         return orders.stream()
                 .map(order -> new OrderSummary(
                         order.getId(),
@@ -34,12 +69,7 @@ public class OrderQueryService implements OrderQueryUseCase {
                 .toList();
     }
 
-    @Override
-    public OrderDetail getOrder(UserId userId, Long orderId) {
-        Order order = orderRepository.findById(orderId)
-                .filter(o -> o.getUserId().equals(userId))
-                .orElseThrow(() -> new IllegalArgumentException("주문을 찾을 수 없습니다."));
-
+    private OrderDetail toOrderDetail(Order order) {
         List<OrderItemDetail> itemDetails = order.getItems().stream()
                 .map(this::toOrderItemDetail)
                 .toList();

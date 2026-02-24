@@ -1,9 +1,11 @@
 package com.loopers.interfaces.api.user;
 
+import com.loopers.application.like.LikeQueryUseCase;
 import com.loopers.application.user.PasswordUpdateUseCase;
 import com.loopers.application.user.RegisterUseCase;
 import com.loopers.application.user.UserQueryUseCase;
 import com.loopers.domain.model.user.UserId;
+import com.loopers.interfaces.api.like.dto.LikeResponse;
 import com.loopers.interfaces.api.user.dto.PasswordUpdateRequest;
 import com.loopers.interfaces.api.user.dto.UserInfoResponse;
 import com.loopers.interfaces.api.user.dto.UserRegisterRequest;
@@ -12,6 +14,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/v1/users")
 public class UserController {
@@ -19,15 +23,18 @@ public class UserController {
     private final RegisterUseCase registerUseCase;
     private final UserQueryUseCase userQueryUseCase;
     private final PasswordUpdateUseCase passwordUpdateUseCase;
+    private final LikeQueryUseCase likeQueryUseCase;
 
     public UserController(
             RegisterUseCase registerUseCase,
             UserQueryUseCase userQueryUseCase,
-            PasswordUpdateUseCase passwordUpdateUseCase
+            PasswordUpdateUseCase passwordUpdateUseCase,
+            LikeQueryUseCase likeQueryUseCase
     ) {
         this.registerUseCase = registerUseCase;
         this.userQueryUseCase = userQueryUseCase;
         this.passwordUpdateUseCase = passwordUpdateUseCase;
+        this.likeQueryUseCase = likeQueryUseCase;
     }
 
     @PostMapping("/register")
@@ -48,6 +55,15 @@ public class UserController {
 
         var userInfo = userQueryUseCase.getUserInfo(userId);
         return ResponseEntity.ok(UserInfoResponse.from(userInfo));
+    }
+
+    @GetMapping("/me/likes")
+    public ResponseEntity<List<LikeResponse>> getMyLikes(HttpServletRequest request) {
+        UserId userId = (UserId) request.getAttribute("authenticatedUserId");
+        List<LikeResponse> likes = likeQueryUseCase.getMyLikes(userId).stream()
+                .map(LikeResponse::from)
+                .toList();
+        return ResponseEntity.ok(likes);
     }
 
     @PutMapping("/me/password")

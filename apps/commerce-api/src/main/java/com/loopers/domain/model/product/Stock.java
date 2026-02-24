@@ -30,6 +30,13 @@ public class Stock {
         return new Stock(this.value - quantity);
     }
 
+    public Stock increase(int quantity) {
+        if (quantity <= 0) {
+            throw new IllegalArgumentException("증가 수량은 1 이상이어야 합니다.");
+        }
+        return new Stock(this.value + quantity);
+    }
+
     public boolean hasEnough(int quantity) {
         return this.value >= quantity;
     }

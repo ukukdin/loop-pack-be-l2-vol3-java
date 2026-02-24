@@ -3,10 +3,9 @@ package com.loopers.infrastructure.like;
 import com.loopers.domain.model.like.Like;
 import com.loopers.domain.model.user.UserId;
 import com.loopers.domain.repository.LikeRepository;
-import com.loopers.infrastructure.like.LikeJpaEntity;
-import com.loopers.infrastructure.like.LikeJpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -39,6 +38,13 @@ public class LikeRepositoryImpl implements LikeRepository {
     @Override
     public boolean existsByUserIdAndProductId(UserId userId, Long productId) {
         return likeJpaRepository.existsByUserIdAndProductId(userId.getValue(), productId);
+    }
+
+    @Override
+    public List<Like> findAllByUserId(UserId userId) {
+        return likeJpaRepository.findAllByUserId(userId.getValue()).stream()
+                .map(this::toDomain)
+                .toList();
     }
 
     private LikeJpaEntity toEntity(Like like) {

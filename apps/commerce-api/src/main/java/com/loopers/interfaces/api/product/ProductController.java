@@ -1,12 +1,12 @@
 package com.loopers.interfaces.api.product;
 
 import com.loopers.application.product.ProductQueryUseCase;
+import com.loopers.interfaces.api.common.PageResponse;
 import com.loopers.interfaces.api.product.dto.ProductDetailResponse;
+import com.loopers.interfaces.api.product.dto.ProductSummaryResponse;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/v1/products")
@@ -16,6 +16,17 @@ public class ProductController {
 
     public ProductController(ProductQueryUseCase productQueryUseCase) {
         this.productQueryUseCase = productQueryUseCase;
+    }
+
+    @GetMapping
+    public ResponseEntity<PageResponse<ProductSummaryResponse>> getProducts(
+            @RequestParam(required = false) Long brandId,
+            @RequestParam(required = false) String sort,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        Page<ProductQueryUseCase.ProductSummaryInfo> products =
+                productQueryUseCase.getProducts(brandId, sort, page, size);
+        return ResponseEntity.ok(PageResponse.from(products, ProductSummaryResponse::from));
     }
 
     @GetMapping("/{productId}")
