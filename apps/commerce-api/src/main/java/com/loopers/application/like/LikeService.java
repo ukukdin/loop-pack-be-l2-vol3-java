@@ -43,15 +43,12 @@ public class LikeService implements LikeUseCase, UnlikeUseCase, LikeQueryUseCase
     public void unlike(UserId userId, Long productId) {
         findProduct(productId);
 
-        if (!likeRepository.existsByUserIdAndProductId(userId, productId)) {
-            return;
-        }
-
-        Like like = likeRepository.findByUserIdAndProductId(userId, productId)
-                .orElseThrow(() -> new IllegalArgumentException("좋아요를 찾을 수 없습니다."));
-        like.markUnliked();
-        domainEventPublisher.publishEvents(like);
-        likeRepository.deleteByUserIdAndProductId(userId, productId);
+        likeRepository.findByUserIdAndProductId(userId, productId)
+                .ifPresent(like -> {
+                    like.markUnliked();
+                    domainEventPublisher.publishEvents(like);
+                    likeRepository.deleteByUserIdAndProductId(userId, productId);
+                });
     }
 
     @Override

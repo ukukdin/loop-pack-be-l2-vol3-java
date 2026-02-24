@@ -101,7 +101,6 @@ class LikeServiceTest {
             Like like = Like.reconstitute(1L, userId, 1L, LocalDateTime.now());
 
             when(productRepository.findById(1L)).thenReturn(Optional.of(product));
-            when(likeRepository.existsByUserIdAndProductId(userId, 1L)).thenReturn(true);
             when(likeRepository.findByUserIdAndProductId(userId, 1L)).thenReturn(Optional.of(like));
 
             // when
@@ -120,7 +119,7 @@ class LikeServiceTest {
             Product product = createProduct(1L, 0);
 
             when(productRepository.findById(1L)).thenReturn(Optional.of(product));
-            when(likeRepository.existsByUserIdAndProductId(userId, 1L)).thenReturn(false);
+            when(likeRepository.findByUserIdAndProductId(userId, 1L)).thenReturn(Optional.empty());
 
             // when
             service.unlike(userId, 1L);
