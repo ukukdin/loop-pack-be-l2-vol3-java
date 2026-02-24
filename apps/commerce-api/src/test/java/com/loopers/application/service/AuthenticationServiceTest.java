@@ -1,6 +1,6 @@
 package com.loopers.application.service;
 
-import com.loopers.domain.model.*;
+import com.loopers.domain.model.user.*;
 import com.loopers.domain.repository.UserRepository;
 import com.loopers.domain.service.PasswordEncoder;
 import org.junit.jupiter.api.BeforeEach;

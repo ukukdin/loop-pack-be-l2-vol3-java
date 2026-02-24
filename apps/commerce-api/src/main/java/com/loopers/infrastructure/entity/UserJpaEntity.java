@@ -1,9 +1,9 @@
 package com.loopers.infrastructure.entity;
 
-import com.loopers.domain.model.Birthday;
-import com.loopers.domain.model.Email;
-import com.loopers.domain.model.UserId;
-import com.loopers.domain.model.UserName;
+import com.loopers.domain.model.user.Birthday;
+import com.loopers.domain.model.user.Email;
+import com.loopers.domain.model.user.UserId;
+import com.loopers.domain.model.user.UserName;
 import jakarta.persistence.*;
 import lombok.Getter;
 

@@ -1,6 +1,6 @@
 package com.loopers.application;
 
-import com.loopers.domain.model.UserId;
+import com.loopers.domain.model.user.UserId;
 
 public interface PasswordUpdateUseCase {
 

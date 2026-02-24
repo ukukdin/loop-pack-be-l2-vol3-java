@@ -1,7 +1,7 @@
 package com.loopers.domain.repository;
 
-import com.loopers.domain.model.User;
-import com.loopers.domain.model.UserId;
+import com.loopers.domain.model.user.User;
+import com.loopers.domain.model.user.UserId;
 
 import java.util.Optional;
 

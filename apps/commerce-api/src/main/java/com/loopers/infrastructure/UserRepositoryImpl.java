@@ -1,6 +1,6 @@
 package com.loopers.infrastructure;
 
-import com.loopers.domain.model.*;
+import com.loopers.domain.model.user.*;
 import com.loopers.domain.repository.UserRepository;
 import com.loopers.infrastructure.entity.UserJpaEntity;
 import com.loopers.infrastructure.repository.UserJpaRepository;

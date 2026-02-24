@@ -3,7 +3,7 @@ package com.loopers.interfaces.api;
 import com.loopers.application.PasswordUpdateUseCase;
 import com.loopers.application.RegisterUseCase;
 import com.loopers.application.UserQueryUseCase;
-import com.loopers.domain.model.UserId;
+import com.loopers.domain.model.user.UserId;
 import com.loopers.interfaces.api.dto.PasswordUpdateRequest;
 import com.loopers.interfaces.api.dto.UserInfoResponse;
 import com.loopers.interfaces.api.dto.UserRegisterRequest;

@@ -1,8 +1,8 @@
 package com.loopers.application.service;
 
 import com.loopers.application.AuthenticationUseCase;
-import com.loopers.domain.model.User;
-import com.loopers.domain.model.UserId;
+import com.loopers.domain.model.user.User;
+import com.loopers.domain.model.user.UserId;
 import com.loopers.domain.repository.UserRepository;
 import com.loopers.domain.service.PasswordEncoder;
 import org.springframework.stereotype.Service;
