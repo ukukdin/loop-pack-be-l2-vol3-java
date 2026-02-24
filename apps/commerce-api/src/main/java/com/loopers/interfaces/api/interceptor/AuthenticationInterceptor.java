@@ -1,6 +1,6 @@
 package com.loopers.interfaces.api.interceptor;
 
-import com.loopers.application.AuthenticationUseCase;
+import com.loopers.application.user.AuthenticationUseCase;
 import com.loopers.domain.model.user.UserId;
 import com.loopers.support.error.ErrorType;
 import jakarta.servlet.http.HttpServletRequest;
