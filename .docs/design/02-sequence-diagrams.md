@@ -39,7 +39,7 @@ sequenceDiagram
     participant Encoder as 🛡️ PasswordEncoder
     participant DB as 💾 UserRepository
 
-    User->>API: POST /api/v1/users (loginId, password, name, birthday, email)
+    User->>API: POST /api/v1/users/register (loginId, password, name, birthday, email)
     API->>Service: register(loginId, name, rawPassword, birthday, email)
 
     rect rgb(240, 248, 255)
@@ -150,7 +150,7 @@ sequenceDiagram
     participant Encoder as 🛡️ PasswordEncoder
     participant DB as 💾 UserRepository
 
-    User->>API: PUT /api/v1/users/password (Header: X-Loopers-LoginId, X-Loopers-LoginPw, Body: currentPassword, newPassword)
+    User->>API: PUT /api/v1/users/me/password (Header: X-Loopers-LoginId, X-Loopers-LoginPw, Body: currentPassword, newPassword)
 
     rect rgb(255, 230, 230)
         Note right of Interceptor: [책임 1] Interceptor preHandle — 헤더 기반 인증
