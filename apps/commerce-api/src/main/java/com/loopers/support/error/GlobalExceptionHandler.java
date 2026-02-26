@@ -2,18 +2,19 @@ package com.loopers.support.error;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-
 import java.util.Map;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(CoreException.class)
     public ResponseEntity<Map<String, Object>> handleCoreException(CoreException e) {
+        log.error("Unhandled exception occurred", e);
         return ResponseEntity
                 .status(e.getErrorType().getStatus())
                 .body(Map.of(
@@ -29,21 +30,6 @@ public class GlobalExceptionHandler {
                 .body(Map.of(
                         "code", "BAD_REQUEST",
                         "message", e.getMessage()
-                ));
-    }
-
-    @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<Map<String, Object>> handleValidationException(MethodArgumentNotValidException e) {
-        String message = e.getBindingResult().getFieldErrors().stream()
-                .findFirst()
-                .map(error -> error.getField() + ": " + error.getDefaultMessage())
-                .orElse("유효성 검사 실패");
-
-        return ResponseEntity
-                .status(HttpStatus.BAD_REQUEST)
-                .body(Map.of(
-                        "code", "VALIDATION_ERROR",
-                        "message", message
                 ));
     }
 
