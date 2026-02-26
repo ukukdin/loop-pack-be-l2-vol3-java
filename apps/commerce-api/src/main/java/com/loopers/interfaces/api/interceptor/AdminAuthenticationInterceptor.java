@@ -1,7 +1,5 @@
 package com.loopers.interfaces.api.interceptor;
 
-import com.loopers.application.user.AuthenticationUseCase;
-import com.loopers.domain.model.user.UserId;
 import com.loopers.support.error.ErrorType;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -10,33 +8,19 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 
 @Component
-public class AuthenticationInterceptor implements HandlerInterceptor {
+public class AdminAuthenticationInterceptor implements HandlerInterceptor {
 
-    private final AuthenticationUseCase authenticationUseCase;
-
-    public AuthenticationInterceptor(AuthenticationUseCase authenticationUseCase) {
-        this.authenticationUseCase = authenticationUseCase;
-    }
+    private static final String ADMIN_LDAP_VALUE = "loopers.admin";
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
-        String loginId = request.getHeader("X-Loopers-LoginId");
-        String loginPw = request.getHeader("X-Loopers-LoginPw");
+        String ldap = request.getHeader("X-Loopers-Ldap");
 
-        if (loginId == null || loginId.isBlank() || loginPw == null || loginPw.isBlank()) {
+        if (!ADMIN_LDAP_VALUE.equals(ldap)) {
             sendUnauthorizedResponse(response);
             return false;
         }
-
-        try {
-            UserId userId = UserId.of(loginId);
-            authenticationUseCase.authenticate(userId, loginPw);
-            request.setAttribute("authenticatedUserId", userId);
-            return true;
-        } catch (IllegalArgumentException e) {
-            sendUnauthorizedResponse(response);
-            return false;
-        }
+        return true;
     }
 
     private void sendUnauthorizedResponse(HttpServletResponse response) throws Exception {
