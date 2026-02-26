@@ -58,7 +58,7 @@ class BrandTest {
     @DisplayName("reconstitute로 DB에서 복원")
     void reconstitute_success() {
         LocalDateTime now = LocalDateTime.now();
-        Brand brand = Brand.reconstitute(1L, BrandName.of("Nike"), "스포츠 브랜드", now, now, null);
+        Brand brand = Brand.reconstitute(new BrandData(1L, BrandName.of("Nike"), "스포츠 브랜드", now, now, null));
 
         assertThat(brand.getId()).isEqualTo(1L);
         assertThat(brand.getName().getValue()).isEqualTo("Nike");

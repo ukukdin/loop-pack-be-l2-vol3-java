@@ -1,8 +1,7 @@
 package com.loopers.domain.repository;
 
+import com.loopers.domain.model.common.PageResult;
 import com.loopers.domain.model.product.Product;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 import java.util.Optional;
@@ -13,7 +12,11 @@ public interface ProductRepository {
 
     Optional<Product> findById(Long id);
 
-    Page<Product> findAllByDeletedAtIsNull(Long brandId, Pageable pageable);
+    Optional<Product> findActiveById(Long id);
+
+    Optional<Product> findActiveByIdWithLock(Long id);
+
+    PageResult<Product> findAllActive(Long brandId, String sort, int page, int size);
 
     List<Product> findAllByBrandId(Long brandId);
 }

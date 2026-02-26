@@ -1,8 +1,8 @@
 package com.loopers.application.brand;
 
 import com.loopers.domain.model.brand.Brand;
+import com.loopers.domain.model.brand.BrandData;
 import com.loopers.domain.model.brand.BrandName;
-import com.loopers.domain.model.product.*;
 import com.loopers.domain.repository.BrandRepository;
 import com.loopers.domain.model.common.DomainEventPublisher;
 import org.junit.jupiter.api.BeforeEach;
@@ -11,7 +11,6 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.*;
@@ -72,7 +71,7 @@ class BrandServiceTest {
         void updateBrand_success() {
             // given
             Brand brand = createBrand(1L, "나이키");
-            when(brandRepository.findById(1L)).thenReturn(Optional.of(brand));
+            when(brandRepository.findActiveById(1L)).thenReturn(Optional.of(brand));
 
             // when & then
             assertThatNoException()
@@ -85,7 +84,7 @@ class BrandServiceTest {
         @DisplayName("존재하지 않는 브랜드 수정시 예외")
         void updateBrand_fail_notFound() {
             // given
-            when(brandRepository.findById(999L)).thenReturn(Optional.empty());
+            when(brandRepository.findActiveById(999L)).thenReturn(Optional.empty());
 
             // when & then
             assertThatThrownBy(() -> service.updateBrand(999L, "아디다스", "설명"))
@@ -103,7 +102,7 @@ class BrandServiceTest {
         void deleteBrand_success_eventPublished() {
             // given
             Brand brand = createBrand(1L, "나이키");
-            when(brandRepository.findById(1L)).thenReturn(Optional.of(brand));
+            when(brandRepository.findActiveById(1L)).thenReturn(Optional.of(brand));
 
             // when
             service.deleteBrand(1L);
@@ -117,7 +116,7 @@ class BrandServiceTest {
         @DisplayName("존재하지 않는 브랜드 삭제시 예외")
         void deleteBrand_fail_notFound() {
             // given
-            when(brandRepository.findById(999L)).thenReturn(Optional.empty());
+            when(brandRepository.findActiveById(999L)).thenReturn(Optional.empty());
 
             // when & then
             assertThatThrownBy(() -> service.deleteBrand(999L))
@@ -126,46 +125,8 @@ class BrandServiceTest {
         }
     }
 
-    @Nested
-    @DisplayName("브랜드 조회")
-    class QueryBrand {
-
-        @Test
-        @DisplayName("단건 조회 성공")
-        void getBrand_success() {
-            // given
-            Brand brand = createBrand(1L, "나이키");
-            when(brandRepository.findById(1L)).thenReturn(Optional.of(brand));
-
-            // when
-            var result = service.getBrand(1L);
-
-            // then
-            assertThat(result.id()).isEqualTo(1L);
-            assertThat(result.name()).isEqualTo("나이키");
-        }
-
-        @Test
-        @DisplayName("목록 조회 - 삭제된 브랜드 제외")
-        void getBrands_excludeDeleted() {
-            // given
-            Brand active = createBrand(1L, "나이키");
-            Brand deleted = Brand.reconstitute(2L, BrandName.of("삭제됨"), "설명",
-                    LocalDateTime.now(), LocalDateTime.now(), LocalDateTime.now());
-
-            when(brandRepository.findAll()).thenReturn(List.of(active, deleted));
-
-            // when
-            var result = service.getBrands();
-
-            // then
-            assertThat(result).hasSize(1);
-            assertThat(result.get(0).name()).isEqualTo("나이키");
-        }
-    }
-
     private Brand createBrand(Long id, String name) {
-        return Brand.reconstitute(id, BrandName.of(name), "설명",
-                LocalDateTime.now(), LocalDateTime.now(), null);
+        return Brand.reconstitute(new BrandData(id, BrandName.of(name), "설명",
+                LocalDateTime.now(), LocalDateTime.now(), null));
     }
 }

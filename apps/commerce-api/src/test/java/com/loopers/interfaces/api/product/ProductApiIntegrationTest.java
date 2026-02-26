@@ -54,7 +54,7 @@ class ProductApiIntegrationTest {
         void createProduct_success() throws Exception {
             createBrand("나이키", "스포츠");
 
-            var request = new ProductCreateRequest(1L, "운동화", 50000, 100, "좋은 운동화");
+            var request = new ProductCreateRequest(1L, "운동화", 50000, null, 100, "좋은 운동화");
 
             mockMvc.perform(post(ADMIN_URL)
                             .header(ADMIN_HEADER, ADMIN_VALUE)
@@ -66,7 +66,7 @@ class ProductApiIntegrationTest {
         @Test
         @DisplayName("존재하지 않는 브랜드로 상품 생성시 실패")
         void createProduct_fail_brandNotFound() throws Exception {
-            var request = new ProductCreateRequest(999L, "운동화", 50000, 100, "좋은 운동화");
+            var request = new ProductCreateRequest(999L, "운동화", 50000, null, 100, "좋은 운동화");
 
             mockMvc.perform(post(ADMIN_URL)
                             .header(ADMIN_HEADER, ADMIN_VALUE)
@@ -86,7 +86,7 @@ class ProductApiIntegrationTest {
             createBrand("나이키", "스포츠");
             createProduct(1L, "운동화", 50000, 100);
 
-            var updateRequest = new ProductUpdateRequest("슬리퍼", 30000, 200, "변경된 설명");
+            var updateRequest = new ProductUpdateRequest("슬리퍼", 30000, null, 200, "변경된 설명");
 
             mockMvc.perform(put(ADMIN_URL + "/1")
                             .header(ADMIN_HEADER, ADMIN_VALUE)
@@ -195,7 +195,7 @@ class ProductApiIntegrationTest {
     }
 
     private void createProduct(Long brandId, String name, int price, int stock) throws Exception {
-        var request = new ProductCreateRequest(brandId, name, price, stock, "설명");
+        var request = new ProductCreateRequest(brandId, name, price, null, stock, "설명");
         mockMvc.perform(post(ADMIN_URL)
                         .header(ADMIN_HEADER, ADMIN_VALUE)
                         .contentType(MediaType.APPLICATION_JSON)

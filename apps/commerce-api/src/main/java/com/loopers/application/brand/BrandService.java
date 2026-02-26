@@ -7,11 +7,9 @@ import com.loopers.domain.repository.BrandRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-
 @Service
-@Transactional(readOnly = true)
-public class BrandService implements CreateBrandUseCase, UpdateBrandUseCase, DeleteBrandUseCase, BrandQueryUseCase {
+@Transactional
+public class BrandService implements CreateBrandUseCase, UpdateBrandUseCase, DeleteBrandUseCase {
 
     private final BrandRepository brandRepository;
     private final DomainEventPublisher eventPublisher;
@@ -22,7 +20,6 @@ public class BrandService implements CreateBrandUseCase, UpdateBrandUseCase, Del
     }
 
     @Override
-    @Transactional
     public void createBrand(String name, String description) {
         BrandName brandName = BrandName.of(name);
         if (brandRepository.existsByName(brandName)) {
@@ -33,7 +30,6 @@ public class BrandService implements CreateBrandUseCase, UpdateBrandUseCase, Del
     }
 
     @Override
-    @Transactional
     public void updateBrand(Long brandId, String name, String description) {
         Brand brand = findBrand(brandId);
         Brand updated = brand.update(BrandName.of(name), description);
@@ -41,7 +37,6 @@ public class BrandService implements CreateBrandUseCase, UpdateBrandUseCase, Del
     }
 
     @Override
-    @Transactional
     public void deleteBrand(Long brandId) {
         Brand brand = findBrand(brandId);
         Brand deleted = brand.delete();
@@ -49,27 +44,8 @@ public class BrandService implements CreateBrandUseCase, UpdateBrandUseCase, Del
         eventPublisher.publishEvents(deleted);
     }
 
-    @Override
-    public BrandInfo getBrand(Long brandId) {
-        Brand brand = findBrand(brandId);
-        return toBrandInfo(brand);
-    }
-
-    @Override
-    public List<BrandInfo> getBrands() {
-        return brandRepository.findAll().stream()
-                .filter(brand -> !brand.isDeleted())
-                .map(this::toBrandInfo)
-                .toList();
-    }
-
     private Brand findBrand(Long brandId) {
-        return brandRepository.findById(brandId)
-                .filter(brand -> !brand.isDeleted())
+        return brandRepository.findActiveById(brandId)
                 .orElseThrow(() -> new IllegalArgumentException("브랜드를 찾을 수 없습니다."));
-    }
-
-    private BrandInfo toBrandInfo(Brand brand) {
-        return new BrandInfo(brand.getId(), brand.getName().getValue(), brand.getDescription());
     }
 }

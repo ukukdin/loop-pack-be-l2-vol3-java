@@ -37,15 +37,9 @@ public class UserController {
         this.likeQueryUseCase = likeQueryUseCase;
     }
 
-    @PostMapping("/register")
+    @PostMapping
     public ResponseEntity<Void> register(@RequestBody UserRegisterRequest request) {
-        registerUseCase.register(
-                request.loginId(),
-                request.name(),
-                request.password(),
-                request.birthday(),
-                request.email()
-        );
+        registerUseCase.register(request.toCommand());
         return ResponseEntity.ok().build();
     }
 
@@ -57,10 +51,18 @@ public class UserController {
         return ResponseEntity.ok(UserInfoResponse.from(userInfo));
     }
 
-    @GetMapping("/me/likes")
-    public ResponseEntity<List<LikeResponse>> getMyLikes(HttpServletRequest request) {
-        UserId userId = (UserId) request.getAttribute("authenticatedUserId");
-        List<LikeResponse> likes = likeQueryUseCase.getMyLikes(userId).stream()
+    @GetMapping("/{userId}/likes")
+    public ResponseEntity<List<LikeResponse>> getMyLikes(
+            @PathVariable String userId,
+            @RequestParam(defaultValue = "latest") String sort,
+            @RequestParam(required = false) Boolean saleYn,
+            @RequestParam(required = false) String status,
+            HttpServletRequest request) {
+        UserId authenticatedUserId = (UserId) request.getAttribute("authenticatedUserId");
+        if (!authenticatedUserId.getValue().equals(userId)) {
+            return ResponseEntity.status(403).build();
+        }
+        List<LikeResponse> likes = likeQueryUseCase.getMyLikes(authenticatedUserId, sort, saleYn, status).stream()
                 .map(LikeResponse::from)
                 .toList();
         return ResponseEntity.ok(likes);

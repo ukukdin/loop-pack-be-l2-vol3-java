@@ -1,14 +1,16 @@
 package com.loopers.application.product;
 
 import com.loopers.domain.model.brand.Brand;
+import com.loopers.domain.model.common.PageResult;
 import com.loopers.domain.model.product.Product;
 import com.loopers.domain.repository.BrandRepository;
 import com.loopers.domain.repository.ProductRepository;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional(readOnly = true)
@@ -24,8 +26,7 @@ public class ProductQueryService implements ProductQueryUseCase {
 
     @Override
     public ProductDetailInfo getProduct(Long productId) {
-        Product product = productRepository.findById(productId)
-                .filter(p -> !p.isDeleted())
+        Product product = productRepository.findActiveById(productId)
                 .orElseThrow(() -> new IllegalArgumentException("상품을 찾을 수 없습니다."));
 
         Brand brand = brandRepository.findById(product.getBrandId())
@@ -37,43 +38,35 @@ public class ProductQueryService implements ProductQueryUseCase {
                 brand.getName().getValue(),
                 product.getName().getValue(),
                 product.getPrice().getValue(),
+                product.getSalePrice() != null ? product.getSalePrice().getValue() : null,
+                product.isOnSale(),
                 product.getStock().getValue(),
-                product.getLikeCount().getValue(),
-                product.getDescription().getValueOrNull()
+                product.getLikeCount(),
+                product.getDescription()
         );
     }
 
     @Override
-    public Page<ProductSummaryInfo> getProducts(Long brandId, String sort, int page, int size) {
-        Sort sorting = resolveSort(sort);
-        PageRequest pageRequest = PageRequest.of(page, size, sorting);
+    public PageResult<ProductSummaryInfo> getProducts(Long brandId, String sort, int page, int size) {
+        PageResult<Product> products = productRepository.findAllActive(brandId, sort, page, size);
 
-        Page<Product> products = productRepository.findAllByDeletedAtIsNull(brandId, pageRequest);
+        List<Long> brandIds = products.content().stream()
+                .map(Product::getBrandId)
+                .distinct()
+                .toList();
 
-        return products.map(product -> {
-            String brandName = brandRepository.findById(product.getBrandId())
-                    .map(b -> b.getName().getValue())
-                    .orElse("");
-            return new ProductSummaryInfo(
-                    product.getId(),
-                    product.getBrandId(),
-                    brandName,
-                    product.getName().getValue(),
-                    product.getPrice().getValue(),
-                    product.getLikeCount().getValue()
-            );
-        });
-    }
+        Map<Long, String> brandNameMap = brandRepository.findAllByIds(brandIds).stream()
+                .collect(Collectors.toMap(Brand::getId, b -> b.getName().getValue()));
 
-    private Sort resolveSort(String sort) {
-        if (sort == null) {
-            return Sort.by(Sort.Direction.DESC, "createdAt");
-        }
-        return switch (sort) {
-            case "price_asc" -> Sort.by(Sort.Direction.ASC, "price");
-            case "price_desc" -> Sort.by(Sort.Direction.DESC, "price");
-            case "likes_desc" -> Sort.by(Sort.Direction.DESC, "likeCount");
-            default -> Sort.by(Sort.Direction.DESC, "createdAt");
-        };
+        return products.map(product -> new ProductSummaryInfo(
+                product.getId(),
+                product.getBrandId(),
+                brandNameMap.getOrDefault(product.getBrandId(), ""),
+                product.getName().getValue(),
+                product.getPrice().getValue(),
+                product.getSalePrice() != null ? product.getSalePrice().getValue() : null,
+                product.isOnSale(),
+                product.getLikeCount()
+        ));
     }
 }

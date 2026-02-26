@@ -31,6 +31,8 @@ public class ProductJpaEntity {
 
     private String description;
 
+    private Integer salePrice;
+
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -41,13 +43,14 @@ public class ProductJpaEntity {
 
     protected ProductJpaEntity() {}
 
-    public ProductJpaEntity(Long id, Long brandId, String name, int price, int stockQuantity,
-                            int likeCount, String description,
+    public ProductJpaEntity(Long id, Long brandId, String name, int price, Integer salePrice,
+                            int stockQuantity, int likeCount, String description,
                             LocalDateTime createdAt, LocalDateTime updatedAt, LocalDateTime deletedAt) {
         this.id = id;
         this.brandId = brandId;
         this.name = name;
         this.price = price;
+        this.salePrice = salePrice;
         this.stockQuantity = stockQuantity;
         this.likeCount = likeCount;
         this.description = description;

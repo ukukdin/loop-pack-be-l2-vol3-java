@@ -51,7 +51,7 @@ class UserApiE2ETest {
 
             // when - 회원가입
             ResponseEntity<Void> registerResponse = restTemplate.postForEntity(
-                    BASE_URL + "/register",
+                    BASE_URL,
                     registerRequest,
                     Void.class
             );
@@ -84,11 +84,11 @@ class UserApiE2ETest {
             var request = createRegisterRequest(loginId, "Password1!", "홍길동");
 
             // 첫 번째 가입
-            restTemplate.postForEntity(BASE_URL + "/register", request, Void.class);
+            restTemplate.postForEntity(BASE_URL, request, Void.class);
 
             // when - 동일 ID로 재가입
             ResponseEntity<Void> response = restTemplate.postForEntity(
-                    BASE_URL + "/register",
+                    BASE_URL,
                     request,
                     Void.class
             );
@@ -230,7 +230,7 @@ class UserApiE2ETest {
             var registerRequest = createRegisterRequest(loginId, password, "김철수");
 
             ResponseEntity<Void> registerResponse = restTemplate.postForEntity(
-                    BASE_URL + "/register",
+                    BASE_URL,
                     registerRequest,
                     Void.class
             );
@@ -292,6 +292,6 @@ class UserApiE2ETest {
 
     private void registerUser(String loginId, String password, String name) {
         var request = createRegisterRequest(loginId, password, name);
-        ResponseEntity<Void> response = restTemplate.postForEntity(BASE_URL + "/register", request, Void.class);
+        ResponseEntity<Void> response = restTemplate.postForEntity(BASE_URL, request, Void.class);
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);    }
 }

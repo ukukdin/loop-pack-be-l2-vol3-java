@@ -1,10 +1,12 @@
 package com.loopers.domain.model.user;
 
-import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
 
 import java.util.regex.Pattern;
 
-@Data
+@Getter
+@EqualsAndHashCode
 public class UserId {
 
     private static final Pattern PATTERN = Pattern.compile("^[a-z0-9]{4,10}$");

@@ -17,51 +17,34 @@ public class Order extends AggregateRoot {
     private final UserId userId;
     private final List<OrderItem> items;
     private final OrderSnapshot snapshot;
-    private final ReceiverName receiverName;
-    private final Address address;
-    private final String deliveryRequest;
-    private final PaymentMethod paymentMethod;
-    private final Money totalAmount;
-    private final Money discountAmount;
-    private final Money paymentAmount;
+    private final DeliveryInfo deliveryInfo;
+    private final OrderAmount orderAmount;
     private final OrderStatus status;
-    private final LocalDate desiredDeliveryDate;
     private final LocalDateTime createdAt;
     private final LocalDateTime updatedAt;
 
     private Order(Long id, UserId userId, List<OrderItem> items, OrderSnapshot snapshot,
-                  ReceiverName receiverName, Address address, String deliveryRequest,
-                  PaymentMethod paymentMethod, Money totalAmount, Money discountAmount,
-                  Money paymentAmount, OrderStatus status, LocalDate desiredDeliveryDate,
-                  LocalDateTime createdAt, LocalDateTime updatedAt) {
+                  DeliveryInfo deliveryInfo, OrderAmount orderAmount,
+                  OrderStatus status, LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.id = id;
         this.userId = userId;
         this.items = items;
         this.snapshot = snapshot;
-        this.receiverName = receiverName;
-        this.address = address;
-        this.deliveryRequest = deliveryRequest;
-        this.paymentMethod = paymentMethod;
-        this.totalAmount = totalAmount;
-        this.discountAmount = discountAmount;
-        this.paymentAmount = paymentAmount;
+        this.deliveryInfo = deliveryInfo;
+        this.orderAmount = orderAmount;
         this.status = status;
-        this.desiredDeliveryDate = desiredDeliveryDate;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }
 
-    public static Order create(UserId userId, List<OrderLine> orderLines, ReceiverName receiverName,
-                               Address address, String deliveryRequest, PaymentMethod paymentMethod,
-                               Money discountAmount, LocalDate desiredDeliveryDate) {
+    public static Order create(UserId userId, List<OrderLine> orderLines,
+                               DeliveryInfo deliveryInfo, PaymentMethod paymentMethod,
+                               Money discountAmount) {
         if (userId == null) {
             throw new IllegalArgumentException("사용자 ID는 필수입니다.");
         }
         if (orderLines == null || orderLines.isEmpty()) {
             throw new IllegalArgumentException("주문 항목은 1개 이상이어야 합니다.");
-        }
-        if (paymentMethod == null) {
-            throw new IllegalArgumentException("결제 수단은 필수입니다.");
         }
 
         List<OrderItem> items = orderLines.stream()
@@ -74,22 +57,17 @@ public class Order extends AggregateRoot {
         OrderSnapshot snapshot = OrderSnapshot.create(snapshotData + ",");
 
         Money totalAmount = calculateTotalAmount(items);
-        Money paymentAmount = totalAmount.subtract(discountAmount);
+        OrderAmount orderAmount = OrderAmount.of(paymentMethod, totalAmount, discountAmount);
         LocalDateTime now = LocalDateTime.now();
 
-        return new Order(null, userId, items, snapshot, receiverName, address, deliveryRequest,
-                paymentMethod, totalAmount, discountAmount, paymentAmount,
-                OrderStatus.PAYMENT_COMPLETED, desiredDeliveryDate, now, now);
+        return new Order(null, userId, items, snapshot, deliveryInfo, orderAmount,
+                OrderStatus.PAYMENT_COMPLETED, now, now);
     }
 
-    public static Order reconstitute(Long id, UserId userId, List<OrderItem> items, OrderSnapshot snapshot,
-                                     ReceiverName receiverName, Address address, String deliveryRequest,
-                                     PaymentMethod paymentMethod, Money totalAmount, Money discountAmount,
-                                     Money paymentAmount, OrderStatus status, LocalDate desiredDeliveryDate,
-                                     LocalDateTime createdAt, LocalDateTime updatedAt) {
-        return new Order(id, userId, items, snapshot, receiverName, address, deliveryRequest,
-                paymentMethod, totalAmount, discountAmount, paymentAmount, status,
-                desiredDeliveryDate, createdAt, updatedAt);
+    public static Order reconstitute(OrderData data) {
+        return new Order(data.id(), data.userId(), data.items(), data.snapshot(),
+                data.deliveryInfo(), data.orderAmount(), data.status(),
+                data.createdAt(), data.updatedAt());
     }
 
     public Order cancel() {
@@ -97,31 +75,33 @@ public class Order extends AggregateRoot {
             throw new IllegalStateException("현재 상태에서는 주문을 취소할 수 없습니다. 현재 상태: " + status.getDescription());
         }
 
-        Order cancelled = new Order(this.id, this.userId, this.items, this.snapshot, this.receiverName,
-                this.address, this.deliveryRequest, this.paymentMethod, this.totalAmount,
-                this.discountAmount, this.paymentAmount, OrderStatus.CANCELLED,
-                this.desiredDeliveryDate, this.createdAt, LocalDateTime.now());
+        Order cancelled = withStatus(OrderStatus.CANCELLED);
 
         List<OrderCancelledEvent.CancelledItem> cancelledItems = this.items.stream()
-                .map(item -> new OrderCancelledEvent.CancelledItem(item.getProductId(), item.getQuantity().getValue()))
+                .map(item -> new OrderCancelledEvent.CancelledItem(item.getProductId(), item.getQuantity()))
                 .toList();
         cancelled.registerEvent(new OrderCancelledEvent(this.id, cancelledItems));
 
         return cancelled;
     }
 
-    public Order updateDeliveryAddress(Address newAddress) {
+    public Order updateDeliveryAddress(String newAddress) {
         if (!status.isAddressChangeable()) {
             throw new IllegalStateException("현재 상태에서는 배송지를 변경할 수 없습니다. 현재 상태: " + status.getDescription());
         }
-        return new Order(this.id, this.userId, this.items, this.snapshot, this.receiverName,
-                newAddress, this.deliveryRequest, this.paymentMethod, this.totalAmount,
-                this.discountAmount, this.paymentAmount, this.status,
-                this.desiredDeliveryDate, this.createdAt, LocalDateTime.now());
+        return new Order(this.id, this.userId, this.items, this.snapshot,
+                this.deliveryInfo.withAddress(newAddress), this.orderAmount,
+                this.status, this.createdAt, LocalDateTime.now());
     }
 
     public boolean isCancellable() {
         return status.isCancellable();
+    }
+
+    private Order withStatus(OrderStatus newStatus) {
+        return new Order(this.id, this.userId, this.items, this.snapshot,
+                this.deliveryInfo, this.orderAmount,
+                newStatus, this.createdAt, LocalDateTime.now());
     }
 
     private static Money calculateTotalAmount(List<OrderItem> items) {
@@ -129,4 +109,14 @@ public class Order extends AggregateRoot {
                 .map(OrderItem::calculateAmount)
                 .reduce(Money.zero(), Money::add);
     }
+
+    // Delegate getters
+    public String getReceiverName() { return deliveryInfo.getReceiverName(); }
+    public String getAddress() { return deliveryInfo.getAddress(); }
+    public String getDeliveryRequest() { return deliveryInfo.getDeliveryRequest(); }
+    public LocalDate getDesiredDeliveryDate() { return deliveryInfo.getDesiredDeliveryDate(); }
+    public PaymentMethod getPaymentMethod() { return orderAmount.getPaymentMethod(); }
+    public Money getTotalAmount() { return orderAmount.getTotalAmount(); }
+    public Money getDiscountAmount() { return orderAmount.getDiscountAmount(); }
+    public Money getPaymentAmount() { return orderAmount.getPaymentAmount(); }
 }

@@ -209,7 +209,7 @@ class OrderApiE2ETest {
     private void registerUser(String loginId, String password, String name) {
         var request = new UserRegisterRequest(loginId, password, name,
                 LocalDate.of(1990, 5, 15), "test@example.com");
-        restTemplate.postForEntity("/api/v1/users/register", request, Void.class);
+        restTemplate.postForEntity("/api/v1/users", request, Void.class);
     }
 
     private void createBrand(String name, String description) {
@@ -219,7 +219,7 @@ class OrderApiE2ETest {
     }
 
     private void createProduct(Long brandId, String name, int price, int stock) {
-        var request = new ProductCreateRequest(brandId, name, price, stock, "설명");
+        var request = new ProductCreateRequest(brandId, name, price, null, stock, "설명");
         restTemplate.exchange("/api-admin/v1/products", HttpMethod.POST,
                 new HttpEntity<>(request, createAdminHeaders()), Void.class);
     }

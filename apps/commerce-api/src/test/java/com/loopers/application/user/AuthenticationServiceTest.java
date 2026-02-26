@@ -83,15 +83,15 @@ class AuthenticationServiceTest {
     }
 
     private User createUser(UserId userId, String encodedPassword) {
-        return User.reconstitute(
+        return User.reconstitute(new UserData(
                 1L,
                 userId,
                 UserName.of("홍길동"),
                 encodedPassword,
                 Birthday.of(BIRTHDAY),
                 Email.of("test@example.com"),
-                WrongPasswordCount.init(),
+                0,
                 LocalDateTime.now()
-        );
+        ));
     }
 }

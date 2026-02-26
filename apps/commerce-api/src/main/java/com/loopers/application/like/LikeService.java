@@ -9,11 +9,9 @@ import com.loopers.domain.repository.ProductRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-
 @Service
 @Transactional
-public class LikeService implements LikeUseCase, UnlikeUseCase, LikeQueryUseCase {
+public class LikeService implements LikeUseCase, UnlikeUseCase {
 
     private final LikeRepository likeRepository;
     private final ProductRepository productRepository;
@@ -45,33 +43,14 @@ public class LikeService implements LikeUseCase, UnlikeUseCase, LikeQueryUseCase
 
         likeRepository.findByUserIdAndProductId(userId, productId)
                 .ifPresent(like -> {
-                    like.markUnliked();
-                    domainEventPublisher.publishEvents(like);
+                    Like unliked = like.markUnliked();
+                    domainEventPublisher.publishEvents(unliked);
                     likeRepository.deleteByUserIdAndProductId(userId, productId);
                 });
     }
 
-    @Override
-    @Transactional(readOnly = true)
-    public List<LikeInfo> getMyLikes(UserId userId) {
-        List<Like> likes = likeRepository.findAllByUserId(userId);
-
-        return likes.stream()
-                .flatMap(like -> productRepository.findById(like.getProductId())
-                        .filter(p -> !p.isDeleted())
-                        .map(product -> new LikeInfo(
-                                product.getId(),
-                                product.getName().getValue(),
-                                product.getPrice().getValue(),
-                                like.getCreatedAt()
-                        ))
-                        .stream())
-                .toList();
-    }
-
     private Product findProduct(Long productId) {
-        return productRepository.findById(productId)
-                .filter(p -> !p.isDeleted())
+        return productRepository.findActiveById(productId)
                 .orElseThrow(() -> new IllegalArgumentException("상품을 찾을 수 없습니다."));
     }
 }

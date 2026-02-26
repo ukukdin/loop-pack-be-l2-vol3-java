@@ -12,7 +12,11 @@ public interface BrandRepository {
 
     Optional<Brand> findById(Long id);
 
-    List<Brand> findAll();
+    Optional<Brand> findActiveById(Long id);
+
+    List<Brand> findAllActive();
+
+    List<Brand> findAllByIds(List<Long> ids);
 
     boolean existsByName(BrandName name);
 }

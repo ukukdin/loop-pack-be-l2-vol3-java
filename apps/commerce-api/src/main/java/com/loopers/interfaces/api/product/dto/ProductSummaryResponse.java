@@ -8,6 +8,8 @@ public record ProductSummaryResponse(
         String brandName,
         String name,
         int price,
+        Integer salePrice,
+        boolean onSale,
         int likeCount
 ) {
     public static ProductSummaryResponse from(ProductQueryUseCase.ProductSummaryInfo info) {
@@ -17,6 +19,8 @@ public record ProductSummaryResponse(
                 info.brandName(),
                 info.name(),
                 info.price(),
+                info.salePrice(),
+                info.onSale(),
                 info.likeCount()
         );
     }

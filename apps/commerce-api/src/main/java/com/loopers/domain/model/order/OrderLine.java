@@ -4,7 +4,7 @@ public record OrderLine(
         Long productId,
         String productName,
         Money unitPrice,
-        Quantity quantity
+        int quantity
 ) {
     public OrderLine {
         if (productId == null) {
@@ -16,8 +16,8 @@ public record OrderLine(
         if (unitPrice == null) {
             throw new IllegalArgumentException("단가는 필수입니다.");
         }
-        if (quantity == null) {
-            throw new IllegalArgumentException("수량은 필수입니다.");
+        if (quantity < 1) {
+            throw new IllegalArgumentException("수량은 1 이상이어야 합니다.");
         }
     }
 }

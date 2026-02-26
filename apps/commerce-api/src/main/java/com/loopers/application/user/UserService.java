@@ -10,7 +10,6 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Service
@@ -27,18 +26,18 @@ public class UserService implements RegisterUseCase, PasswordUpdateUseCase, User
 
     @Override
     @Transactional
-    public void register(String loginId, String name, String rawPassword, LocalDate birthday, String email) {
-        UserId userId = UserId.of(loginId);
-        UserName userName = UserName.of(name);
-        Birthday birth = Birthday.of(birthday);
-        Email userEmail = Email.of(email);
-        Password password = Password.of(rawPassword, birthday);
+    public void register(RegisterCommand command) {
+        UserId userId = UserId.of(command.loginId());
+        UserName userName = UserName.of(command.name());
+        Birthday birth = Birthday.of(command.birthday());
+        Email userEmail = Email.of(command.email());
+        Password password = Password.of(command.rawPassword(), command.birthday());
         String encodedPassword = passwordEncoder.encrypt(password.getValue());
 
         try {
             User user = User.register(
                     userId, userName, encodedPassword, birth,
-                    userEmail, WrongPasswordCount.init(), LocalDateTime.now()
+                    userEmail, LocalDateTime.now()
             );
             userRepository.save(user);
         } catch (DataIntegrityViolationException ex) {
@@ -50,20 +49,7 @@ public class UserService implements RegisterUseCase, PasswordUpdateUseCase, User
     @Transactional
     public void updatePassword(UserId userId, String currentRawPassword, String newRawPassword) {
         User user = findUser(userId);
-
-        LocalDate birthday = user.getBirth().getValue();
-        Password newPassword = Password.of(newRawPassword, birthday);
-
-        if (!passwordEncoder.matches(currentRawPassword, user.getEncodedPassword())) {
-            throw new IllegalArgumentException("현재 비밀번호가 일치하지 않습니다.");
-        }
-
-        if (passwordEncoder.matches(newPassword.getValue(), user.getEncodedPassword())) {
-            throw new IllegalArgumentException("현재 비밀번호는 사용할 수 없습니다.");
-        }
-
-        String encodedNewPassword = passwordEncoder.encrypt(newPassword.getValue());
-        User updatedUser = user.changePassword(encodedNewPassword);
+        User updatedUser = user.changePassword(currentRawPassword, newRawPassword, passwordEncoder);
         userRepository.save(updatedUser);
     }
 
@@ -73,7 +59,7 @@ public class UserService implements RegisterUseCase, PasswordUpdateUseCase, User
 
         return new UserInfoResponse(
                 user.getUserId().getValue(),
-                maskName(user.getUserName().getValue()),
+                user.getUserName().maskedValue(),
                 user.getBirth().getValue(),
                 user.getEmail().getValue()
         );
@@ -82,15 +68,5 @@ public class UserService implements RegisterUseCase, PasswordUpdateUseCase, User
     private User findUser(UserId userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
-    }
-
-    private String maskName(String name) {
-        if (name == null || name.isEmpty()) {
-            return name;
-        }
-        if (name.length() == 1) {
-            return "*";
-        }
-        return name.substring(0, name.length() - 1) + "*";
     }
 }

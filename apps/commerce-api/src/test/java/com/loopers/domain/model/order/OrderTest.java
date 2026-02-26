@@ -15,19 +15,23 @@ class OrderTest {
 
     private Order createOrder() {
         List<OrderLine> orderLines = List.of(
-                new OrderLine(1L, "상품A", Money.of(10000), Quantity.of(2)),
-                new OrderLine(2L, "상품B", Money.of(20000), Quantity.of(1))
+                new OrderLine(1L, "상품A", Money.of(10000), 2),
+                new OrderLine(2L, "상품B", Money.of(20000), 1)
+        );
+
+        DeliveryInfo deliveryInfo = DeliveryInfo.of(
+                "홍길동",
+                "서울시 강남구",
+                "부재시 문 앞에 놓아주세요",
+                LocalDate.now().plusDays(3)
         );
 
         return Order.create(
                 UserId.of("testuser1"),
                 orderLines,
-                ReceiverName.of("홍길동"),
-                Address.of("서울시 강남구"),
-                "부재시 문 앞에 놓아주세요",
+                deliveryInfo,
                 PaymentMethod.CARD,
-                Money.zero(),
-                LocalDate.now().plusDays(3)
+                Money.zero()
         );
     }
 
@@ -48,14 +52,20 @@ class OrderTest {
     @DisplayName("주문 생성 - 할인 적용")
     void create_with_discount() {
         List<OrderLine> orderLines = List.of(
-                new OrderLine(1L, "상품A", Money.of(50000), Quantity.of(1))
+                new OrderLine(1L, "상품A", Money.of(50000), 1)
+        );
+
+        DeliveryInfo deliveryInfo = DeliveryInfo.of(
+                "홍길동",
+                "서울시",
+                null,
+                null
         );
 
         Order order = Order.create(
                 UserId.of("testuser1"), orderLines,
-                ReceiverName.of("홍길동"), Address.of("서울시"),
-                null, PaymentMethod.CARD,
-                Money.of(5000), null
+                deliveryInfo, PaymentMethod.CARD,
+                Money.of(5000)
         );
 
         assertThat(order.getTotalAmount().getValue()).isEqualTo(50000);
@@ -67,12 +77,18 @@ class OrderTest {
     @DisplayName("userId null이면 예외")
     void create_fail_null_userId() {
         List<OrderLine> orderLines = List.of(
-                new OrderLine(1L, "상품A", Money.of(10000), Quantity.of(1))
+                new OrderLine(1L, "상품A", Money.of(10000), 1)
+        );
+
+        DeliveryInfo deliveryInfo = DeliveryInfo.of(
+                "홍길동",
+                "서울시",
+                null,
+                null
         );
 
         assertThatThrownBy(() -> Order.create(null, orderLines,
-                ReceiverName.of("홍길동"), Address.of("서울시"),
-                null, PaymentMethod.CARD, Money.zero(), null))
+                deliveryInfo, PaymentMethod.CARD, Money.zero()))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("사용자 ID는 필수입니다.");
     }
@@ -80,9 +96,15 @@ class OrderTest {
     @Test
     @DisplayName("주문 항목 비어있으면 예외")
     void create_fail_empty_items() {
+        DeliveryInfo deliveryInfo = DeliveryInfo.of(
+                "홍길동",
+                "서울시",
+                null,
+                null
+        );
+
         assertThatThrownBy(() -> Order.create(UserId.of("testuser1"), List.of(),
-                ReceiverName.of("홍길동"), Address.of("서울시"),
-                null, PaymentMethod.CARD, Money.zero(), null))
+                deliveryInfo, PaymentMethod.CARD, Money.zero()))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("1개 이상");
     }
@@ -101,13 +123,17 @@ class OrderTest {
     @Test
     @DisplayName("SHIPPING 상태에서 취소 불가")
     void cancel_fail_shipping() {
-        Order order = Order.reconstitute(
+        DeliveryInfo deliveryInfo = DeliveryInfo.of(
+                "홍길동", "서울시", null, null);
+        OrderAmount orderAmount = OrderAmount.reconstitute(
+                PaymentMethod.CARD, Money.of(10000), Money.zero(), Money.of(10000));
+
+        Order order = Order.reconstitute(new OrderData(
                 1L, UserId.of("testuser1"),
-                List.of(OrderItem.create(1L, Quantity.of(1), Money.of(10000))),
-                null, ReceiverName.of("홍길동"), Address.of("서울시"), null,
-                PaymentMethod.CARD, Money.of(10000), Money.zero(), Money.of(10000),
-                OrderStatus.SHIPPING, null, LocalDateTime.now(), LocalDateTime.now()
-        );
+                List.of(OrderItem.create(1L, 1, Money.of(10000))),
+                null, deliveryInfo, orderAmount,
+                OrderStatus.SHIPPING, LocalDateTime.now(), LocalDateTime.now()
+        ));
 
         assertThat(order.isCancellable()).isFalse();
         assertThatThrownBy(order::cancel)
@@ -118,13 +144,17 @@ class OrderTest {
     @Test
     @DisplayName("DELIVERED 상태에서 취소 불가")
     void cancel_fail_delivered() {
-        Order order = Order.reconstitute(
+        DeliveryInfo deliveryInfo = DeliveryInfo.of(
+                "홍길동", "서울시", null, null);
+        OrderAmount orderAmount = OrderAmount.reconstitute(
+                PaymentMethod.CARD, Money.of(10000), Money.zero(), Money.of(10000));
+
+        Order order = Order.reconstitute(new OrderData(
                 1L, UserId.of("testuser1"),
-                List.of(OrderItem.create(1L, Quantity.of(1), Money.of(10000))),
-                null, ReceiverName.of("홍길동"), Address.of("서울시"), null,
-                PaymentMethod.CARD, Money.of(10000), Money.zero(), Money.of(10000),
-                OrderStatus.DELIVERED, null, LocalDateTime.now(), LocalDateTime.now()
-        );
+                List.of(OrderItem.create(1L, 1, Money.of(10000))),
+                null, deliveryInfo, orderAmount,
+                OrderStatus.DELIVERED, LocalDateTime.now(), LocalDateTime.now()
+        ));
 
         assertThatThrownBy(order::cancel)
                 .isInstanceOf(IllegalStateException.class);
@@ -134,23 +164,27 @@ class OrderTest {
     @DisplayName("배송지 변경 성공 (PAYMENT_COMPLETED)")
     void updateDeliveryAddress_success() {
         Order order = createOrder();
-        Order updated = order.updateDeliveryAddress(Address.of("부산시 해운대구"));
+        Order updated = order.updateDeliveryAddress("부산시 해운대구");
 
-        assertThat(updated.getAddress().getValue()).isEqualTo("부산시 해운대구");
+        assertThat(updated.getAddress()).isEqualTo("부산시 해운대구");
     }
 
     @Test
     @DisplayName("SHIPPING 상태에서 배송지 변경 불가")
     void updateDeliveryAddress_fail_shipping() {
-        Order order = Order.reconstitute(
-                1L, UserId.of("testuser1"),
-                List.of(OrderItem.create(1L, Quantity.of(1), Money.of(10000))),
-                null, ReceiverName.of("홍길동"), Address.of("서울시"), null,
-                PaymentMethod.CARD, Money.of(10000), Money.zero(), Money.of(10000),
-                OrderStatus.SHIPPING, null, LocalDateTime.now(), LocalDateTime.now()
-        );
+        DeliveryInfo deliveryInfo = DeliveryInfo.of(
+                "홍길동", "서울시", null, null);
+        OrderAmount orderAmount = OrderAmount.reconstitute(
+                PaymentMethod.CARD, Money.of(10000), Money.zero(), Money.of(10000));
 
-        assertThatThrownBy(() -> order.updateDeliveryAddress(Address.of("부산시")))
+        Order order = Order.reconstitute(new OrderData(
+                1L, UserId.of("testuser1"),
+                List.of(OrderItem.create(1L, 1, Money.of(10000))),
+                null, deliveryInfo, orderAmount,
+                OrderStatus.SHIPPING, LocalDateTime.now(), LocalDateTime.now()
+        ));
+
+        assertThatThrownBy(() -> order.updateDeliveryAddress("부산시"))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("배송지를 변경할 수 없습니다");
     }

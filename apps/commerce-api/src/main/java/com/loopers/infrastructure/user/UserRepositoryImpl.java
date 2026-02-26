@@ -2,8 +2,6 @@ package com.loopers.infrastructure.user;
 
 import com.loopers.domain.model.user.*;
 import com.loopers.domain.repository.UserRepository;
-import com.loopers.infrastructure.user.UserJpaEntity;
-import com.loopers.infrastructure.user.UserJpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
@@ -13,7 +11,9 @@ public class UserRepositoryImpl implements UserRepository {
 
     private final UserJpaRepository userJpaRepository;
 
-    public UserRepositoryImpl( UserJpaRepository userJpaRepository) {this.userJpaRepository = userJpaRepository;}
+    public UserRepositoryImpl(UserJpaRepository userJpaRepository) {
+        this.userJpaRepository = userJpaRepository;
+    }
 
     @Override
     public User save(User user) {
@@ -41,21 +41,21 @@ public class UserRepositoryImpl implements UserRepository {
                 user.getUserName(),
                 user.getBirth(),
                 user.getEmail(),
+                user.getWrongPasswordCount(),
                 user.getCreatedAt()
         );
     }
 
     private User toDomain(UserJpaEntity entity) {
-        return User.reconstitute(
+        return User.reconstitute(new UserData(
                 entity.getId(),
                 UserId.of(entity.getUserId()),
                 UserName.of(entity.getUsername()),
                 entity.getEncodedPassword(),
                 Birthday.of(entity.getBirthday()),
                 Email.of(entity.getEmail()),
-                WrongPasswordCount.init(),
+                entity.getWrongPasswordCount(),
                 entity.getCreatedAt()
-        );
+        ));
     }
-
 }

@@ -67,8 +67,8 @@ public class OrderRepositoryImpl implements OrderRepository {
                 order.getUserId().getValue(),
                 itemEntities,
                 snapshotEntity,
-                order.getReceiverName().getValue(),
-                order.getAddress().getValue(),
+                order.getReceiverName(),
+                order.getAddress(),
                 order.getDeliveryRequest(),
                 order.getPaymentMethod().name(),
                 order.getTotalAmount().getValue(),
@@ -85,7 +85,7 @@ public class OrderRepositoryImpl implements OrderRepository {
         return new OrderItemJpaEntity(
                 item.getId(),
                 item.getProductId(),
-                item.getQuantity().getValue(),
+                item.getQuantity(),
                 item.getUnitPrice().getValue()
         );
     }
@@ -112,30 +112,38 @@ public class OrderRepositoryImpl implements OrderRepository {
             );
         }
 
-        return Order.reconstitute(
+        DeliveryInfo deliveryInfo = DeliveryInfo.of(
+                entity.getReceiverName(),
+                entity.getAddress(),
+                entity.getDeliveryRequest(),
+                entity.getDesiredDeliveryDate()
+        );
+
+        OrderAmount orderAmount = OrderAmount.reconstitute(
+                PaymentMethod.valueOf(entity.getPaymentMethod()),
+                Money.of(entity.getTotalAmount()),
+                Money.of(entity.getDiscountAmount()),
+                Money.of(entity.getPaymentAmount())
+        );
+
+        return Order.reconstitute(new OrderData(
                 entity.getId(),
                 UserId.of(entity.getUserId()),
                 items,
                 snapshot,
-                ReceiverName.of(entity.getReceiverName()),
-                Address.of(entity.getAddress()),
-                entity.getDeliveryRequest(),
-                PaymentMethod.valueOf(entity.getPaymentMethod()),
-                Money.of(entity.getTotalAmount()),
-                Money.of(entity.getDiscountAmount()),
-                Money.of(entity.getPaymentAmount()),
+                deliveryInfo,
+                orderAmount,
                 OrderStatus.valueOf(entity.getStatus()),
-                entity.getDesiredDeliveryDate(),
                 entity.getCreatedAt(),
                 entity.getUpdatedAt()
-        );
+        ));
     }
 
     private OrderItem toItemDomain(OrderItemJpaEntity entity) {
         return OrderItem.reconstitute(
                 entity.getId(),
                 entity.getProductId(),
-                Quantity.of(entity.getQuantity()),
+                entity.getQuantity(),
                 Money.of(entity.getUnitPrice())
         );
     }

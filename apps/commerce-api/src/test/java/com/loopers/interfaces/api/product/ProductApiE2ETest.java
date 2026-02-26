@@ -47,7 +47,7 @@ class ProductApiE2ETest {
         void create_then_getDetail() {
             // given
             createBrand("나이키", "스포츠");
-            var request = new ProductCreateRequest(1L, "운동화", 50000, 100, "좋은 운동화");
+            var request = new ProductCreateRequest(1L, "운동화", 50000, null, 100, "좋은 운동화");
 
             // when - 생성
             ResponseEntity<Void> createResponse = restTemplate.exchange(
@@ -168,7 +168,7 @@ class ProductApiE2ETest {
     }
 
     private void createProduct(Long brandId, String name, int price, int stock) {
-        var request = new ProductCreateRequest(brandId, name, price, stock, "설명");
+        var request = new ProductCreateRequest(brandId, name, price, null, stock, "설명");
         ResponseEntity<Void> response = restTemplate.exchange(
                 ADMIN_URL,
                 HttpMethod.POST,

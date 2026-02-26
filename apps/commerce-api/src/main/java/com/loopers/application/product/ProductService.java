@@ -25,19 +25,22 @@ public class ProductService implements CreateProductUseCase, UpdateProductUseCas
     }
 
     @Override
-    public void createProduct(Long brandId, String name, int price, int stock, String description) {
-        brandRepository.findById(brandId)
-                .filter(brand -> !brand.isDeleted())
+    public void createProduct(ProductCreateCommand command) {
+        brandRepository.findActiveById(command.brandId())
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 브랜드입니다."));
 
-        Product product = Product.create(brandId, ProductName.of(name), Price.of(price), Stock.of(stock), description);
+        Price salePriceVo = command.salePrice() != null ? Price.of(command.salePrice()) : null;
+        Product product = Product.create(command.brandId(), ProductName.of(command.name()),
+                Price.of(command.price()), salePriceVo, Stock.of(command.stock()), command.description());
         productRepository.save(product);
     }
 
     @Override
-    public void updateProduct(Long productId, String name, int price, int stock, String description) {
-        Product product = findProduct(productId);
-        Product updated = product.update(ProductName.of(name), Price.of(price), Stock.of(stock), description);
+    public void updateProduct(ProductUpdateCommand command) {
+        Product product = findProduct(command.productId());
+        Price salePriceVo = command.salePrice() != null ? Price.of(command.salePrice()) : null;
+        Product updated = product.update(ProductName.of(command.name()), Price.of(command.price()),
+                salePriceVo, Stock.of(command.stock()), command.description());
         productRepository.save(updated);
     }
 
@@ -49,8 +52,7 @@ public class ProductService implements CreateProductUseCase, UpdateProductUseCas
     }
 
     private Product findProduct(Long productId) {
-        return productRepository.findById(productId)
-                .filter(product -> !product.isDeleted())
+        return productRepository.findActiveById(productId)
                 .orElseThrow(() -> new IllegalArgumentException("상품을 찾을 수 없습니다."));
     }
 }

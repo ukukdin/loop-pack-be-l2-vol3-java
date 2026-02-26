@@ -1,10 +1,9 @@
 package com.loopers.infrastructure.brand;
 
 import com.loopers.domain.model.brand.Brand;
+import com.loopers.domain.model.brand.BrandData;
 import com.loopers.domain.model.brand.BrandName;
 import com.loopers.domain.repository.BrandRepository;
-import com.loopers.infrastructure.brand.BrandJpaEntity;
-import com.loopers.infrastructure.brand.BrandJpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -33,8 +32,20 @@ public class BrandRepositoryImpl implements BrandRepository {
     }
 
     @Override
-    public List<Brand> findAll() {
+    public Optional<Brand> findActiveById(Long id) {
+        return findById(id).filter(b -> !b.isDeleted());
+    }
+
+    @Override
+    public List<Brand> findAllActive() {
         return brandJpaRepository.findAllByDeletedAtIsNull().stream()
+                .map(this::toDomain)
+                .toList();
+    }
+
+    @Override
+    public List<Brand> findAllByIds(List<Long> ids) {
+        return brandJpaRepository.findAllByIdIn(ids).stream()
                 .map(this::toDomain)
                 .toList();
     }
@@ -56,13 +67,13 @@ public class BrandRepositoryImpl implements BrandRepository {
     }
 
     private Brand toDomain(BrandJpaEntity entity) {
-        return Brand.reconstitute(
+        return Brand.reconstitute(new BrandData(
                 entity.getId(),
                 BrandName.of(entity.getName()),
                 entity.getDescription(),
                 entity.getCreatedAt(),
                 entity.getUpdatedAt(),
                 entity.getDeletedAt()
-        );
+        ));
     }
 }

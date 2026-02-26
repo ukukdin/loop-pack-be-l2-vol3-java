@@ -1,12 +1,12 @@
 package com.loopers.application.product;
 
-import org.springframework.data.domain.Page;
+import com.loopers.domain.model.common.PageResult;
 
 public interface ProductQueryUseCase {
 
     ProductDetailInfo getProduct(Long productId);
 
-    Page<ProductSummaryInfo> getProducts(Long brandId, String sort, int page, int size);
+    PageResult<ProductSummaryInfo> getProducts(Long brandId, String sort, int page, int size);
 
     record ProductDetailInfo(
             Long id,
@@ -14,6 +14,8 @@ public interface ProductQueryUseCase {
             String brandName,
             String name,
             int price,
+            Integer salePrice,
+            boolean onSale,
             int stock,
             int likeCount,
             String description
@@ -25,6 +27,8 @@ public interface ProductQueryUseCase {
             String brandName,
             String name,
             int price,
+            Integer salePrice,
+            boolean onSale,
             int likeCount
     ) {}
 }

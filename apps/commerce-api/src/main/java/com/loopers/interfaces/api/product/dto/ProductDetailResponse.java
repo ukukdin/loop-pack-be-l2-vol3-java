@@ -8,6 +8,8 @@ public record ProductDetailResponse(
         String brandName,
         String name,
         int price,
+        Integer salePrice,
+        boolean onSale,
         int stock,
         int likeCount,
         String description
@@ -19,6 +21,8 @@ public record ProductDetailResponse(
                 info.brandName(),
                 info.name(),
                 info.price(),
+                info.salePrice(),
+                info.onSale(),
                 info.stock(),
                 info.likeCount(),
                 info.description()

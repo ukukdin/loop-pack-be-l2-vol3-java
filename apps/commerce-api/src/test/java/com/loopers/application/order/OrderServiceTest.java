@@ -5,8 +5,7 @@ import com.loopers.domain.model.product.Price;
 import com.loopers.domain.model.product.Product;
 import com.loopers.domain.model.product.ProductName;
 import com.loopers.domain.model.product.Stock;
-import com.loopers.domain.model.product.LikeCount;
-import com.loopers.domain.model.product.Description;
+import com.loopers.domain.model.product.ProductData;
 import com.loopers.domain.model.user.UserId;
 import com.loopers.domain.repository.OrderRepository;
 import com.loopers.domain.repository.ProductRepository;
@@ -50,7 +49,7 @@ class OrderServiceTest {
             // given
             UserId userId = UserId.of("test1234");
             Product product = createProduct(1L, 50000, 100);
-            when(productRepository.findById(1L)).thenReturn(Optional.of(product));
+            when(productRepository.findActiveByIdWithLock(1L)).thenReturn(Optional.of(product));
             when(productRepository.save(any(Product.class))).thenReturn(product);
 
             var command = new CreateOrderUseCase.OrderCommand(
@@ -75,7 +74,7 @@ class OrderServiceTest {
         void createOrder_fail_productNotFound() {
             // given
             UserId userId = UserId.of("test1234");
-            when(productRepository.findById(999L)).thenReturn(Optional.empty());
+            when(productRepository.findActiveByIdWithLock(999L)).thenReturn(Optional.empty());
 
             var command = new CreateOrderUseCase.OrderCommand(
                     List.of(new CreateOrderUseCase.OrderItemCommand(999L, 1)),
@@ -94,7 +93,7 @@ class OrderServiceTest {
             // given
             UserId userId = UserId.of("test1234");
             Product product = createProduct(1L, 50000, 1);
-            when(productRepository.findById(1L)).thenReturn(Optional.of(product));
+            when(productRepository.findActiveByIdWithLock(1L)).thenReturn(Optional.of(product));
 
             var command = new CreateOrderUseCase.OrderCommand(
                     List.of(new CreateOrderUseCase.OrderItemCommand(1L, 100)),
@@ -214,20 +213,22 @@ class OrderServiceTest {
     }
 
     private Product createProduct(Long id, int price, int stock) {
-        return Product.reconstitute(id, 1L, ProductName.of("상품" + id), Price.of(price),
-                Stock.of(stock), LikeCount.zero(), Description.ofNullable("설명"),
-                LocalDateTime.now(), LocalDateTime.now(), null);
+        return Product.reconstitute(new ProductData(id, 1L, ProductName.of("상품" + id), Price.of(price),
+                null, Stock.of(stock), 0, "설명",
+                LocalDateTime.now(), LocalDateTime.now(), null));
     }
 
     private Order createOrder(Long id, UserId userId, OrderStatus status) {
         List<OrderItem> items = List.of(
-                OrderItem.reconstitute(1L, 1L, Quantity.of(2), Money.of(50000))
+                OrderItem.reconstitute(1L, 1L, 2, Money.of(50000))
         );
-        return Order.reconstitute(id, userId, items, null,
-                ReceiverName.of("홍길동"), Address.of("서울시 강남구"),
-                "문 앞에 놓아주세요", PaymentMethod.CARD,
-                Money.of(100000), Money.zero(), Money.of(100000),
-                status, LocalDate.now().plusDays(3),
-                LocalDateTime.now(), LocalDateTime.now());
+        DeliveryInfo deliveryInfo = DeliveryInfo.of(
+                "홍길동", "서울시 강남구",
+                "문 앞에 놓아주세요", LocalDate.now().plusDays(3));
+        OrderAmount orderAmount = OrderAmount.reconstitute(
+                PaymentMethod.CARD, Money.of(100000), Money.zero(), Money.of(100000));
+        return Order.reconstitute(new OrderData(id, userId, items, null,
+                deliveryInfo, orderAmount, status,
+                LocalDateTime.now(), LocalDateTime.now()));
     }
 }

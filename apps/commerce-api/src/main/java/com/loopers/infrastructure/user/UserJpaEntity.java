@@ -34,19 +34,24 @@ public class UserJpaEntity {
     @Column(nullable = false)
     private String email;
 
+    @Column(nullable = false)
+    private int wrongPasswordCount;
+
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
     protected UserJpaEntity() {}
 
 
-    public UserJpaEntity(Long id, UserId userId, String encodedPassword, UserName userName, Birthday birth, Email email, LocalDateTime createdAt) {
+    public UserJpaEntity(Long id, UserId userId, String encodedPassword, UserName userName,
+                         Birthday birth, Email email, int wrongPasswordCount, LocalDateTime createdAt) {
         this.id = id;
         this.userId = userId.getValue();
         this.encodedPassword = encodedPassword;
         this.username = userName.getValue();
         this.birthday = birth.getValue();
         this.email = email.getValue();
+        this.wrongPasswordCount = wrongPasswordCount;
         this.createdAt = createdAt;
     }
 }

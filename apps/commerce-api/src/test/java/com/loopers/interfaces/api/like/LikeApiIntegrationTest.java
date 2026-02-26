@@ -37,11 +37,11 @@ class LikeApiIntegrationTest {
     private DatabaseCleanUp databaseCleanUp;
 
     private static final String LIKE_URL = "/api/v1/products";
-    private static final String MY_LIKES_URL = "/api/v1/users/me/likes";
     private static final String ADMIN_HEADER = "X-Loopers-Ldap";
     private static final String ADMIN_VALUE = "loopers.admin";
     private static final String LOGIN_ID = "testuser1";
     private static final String PASSWORD = "Password1!";
+    private static final String MY_LIKES_URL = "/api/v1/users/" + LOGIN_ID + "/likes";
 
     @BeforeEach
     void setUp() throws Exception {
@@ -148,7 +148,7 @@ class LikeApiIntegrationTest {
     private void registerUser(String loginId, String password, String name) throws Exception {
         var request = new UserRegisterRequest(loginId, password, name,
                 LocalDate.of(1990, 5, 15), "test@example.com");
-        mockMvc.perform(post("/api/v1/users/register")
+        mockMvc.perform(post("/api/v1/users")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk());
@@ -164,7 +164,7 @@ class LikeApiIntegrationTest {
     }
 
     private void createProduct(Long brandId, String name, int price, int stock) throws Exception {
-        var request = new ProductCreateRequest(brandId, name, price, stock, "설명");
+        var request = new ProductCreateRequest(brandId, name, price, null, stock, "설명");
         mockMvc.perform(post("/api-admin/v1/products")
                         .header(ADMIN_HEADER, ADMIN_VALUE)
                         .contentType(MediaType.APPLICATION_JSON)

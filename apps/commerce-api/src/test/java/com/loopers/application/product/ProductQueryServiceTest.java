@@ -1,7 +1,9 @@
 package com.loopers.application.product;
 
 import com.loopers.domain.model.brand.Brand;
+import com.loopers.domain.model.brand.BrandData;
 import com.loopers.domain.model.brand.BrandName;
+import com.loopers.domain.model.common.PageResult;
 import com.loopers.domain.model.product.*;
 import com.loopers.domain.repository.BrandRepository;
 import com.loopers.domain.repository.ProductRepository;
@@ -9,9 +11,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -46,7 +45,7 @@ class ProductQueryServiceTest {
             Product product = createProduct(1L, 1L, "운동화", 50000);
             Brand brand = createBrand(1L, "나이키");
 
-            when(productRepository.findById(1L)).thenReturn(Optional.of(product));
+            when(productRepository.findActiveById(1L)).thenReturn(Optional.of(product));
             when(brandRepository.findById(1L)).thenReturn(Optional.of(brand));
 
             // when
@@ -63,10 +62,7 @@ class ProductQueryServiceTest {
         @DisplayName("삭제된 상품 조회시 예외")
         void getProduct_fail_deleted() {
             // given
-            Product deleted = Product.reconstitute(1L, 1L, ProductName.of("삭제됨"), Price.of(10000),
-                    Stock.of(0), LikeCount.zero(), Description.ofNullable("설명"),
-                    LocalDateTime.now(), LocalDateTime.now(), LocalDateTime.now());
-            when(productRepository.findById(1L)).thenReturn(Optional.of(deleted));
+            when(productRepository.findActiveById(1L)).thenReturn(Optional.empty());
 
             // when & then
             assertThatThrownBy(() -> service.getProduct(1L))
@@ -78,7 +74,7 @@ class ProductQueryServiceTest {
         @DisplayName("존재하지 않는 상품 조회시 예외")
         void getProduct_fail_notFound() {
             // given
-            when(productRepository.findById(999L)).thenReturn(Optional.empty());
+            when(productRepository.findActiveById(999L)).thenReturn(Optional.empty());
 
             // when & then
             assertThatThrownBy(() -> service.getProduct(999L))
@@ -99,16 +95,16 @@ class ProductQueryServiceTest {
             Product product2 = createProduct(2L, 1L, "슬리퍼", 30000);
             Brand brand = createBrand(1L, "나이키");
 
-            Page<Product> page = new PageImpl<>(List.of(product1, product2), PageRequest.of(0, 20), 2);
-            when(productRepository.findAllByDeletedAtIsNull(eq(null), any())).thenReturn(page);
-            when(brandRepository.findById(1L)).thenReturn(Optional.of(brand));
+            PageResult<Product> pageResult = new PageResult<>(List.of(product1, product2), 0, 20, 2, 1);
+            when(productRepository.findAllActive(eq(null), eq(null), eq(0), eq(20))).thenReturn(pageResult);
+            when(brandRepository.findAllByIds(List.of(1L))).thenReturn(List.of(brand));
 
             // when
             var result = service.getProducts(null, null, 0, 20);
 
             // then
-            assertThat(result.getContent()).hasSize(2);
-            assertThat(result.getContent().get(0).brandName()).isEqualTo("나이키");
+            assertThat(result.content()).hasSize(2);
+            assertThat(result.content().get(0).brandName()).isEqualTo("나이키");
         }
 
         @Test
@@ -118,40 +114,41 @@ class ProductQueryServiceTest {
             Product product = createProduct(1L, 1L, "운동화", 50000);
             Brand brand = createBrand(1L, "나이키");
 
-            Page<Product> page = new PageImpl<>(List.of(product), PageRequest.of(0, 20), 1);
-            when(productRepository.findAllByDeletedAtIsNull(eq(1L), any())).thenReturn(page);
-            when(brandRepository.findById(1L)).thenReturn(Optional.of(brand));
+            PageResult<Product> pageResult = new PageResult<>(List.of(product), 0, 20, 1, 1);
+            when(productRepository.findAllActive(eq(1L), eq(null), eq(0), eq(20))).thenReturn(pageResult);
+            when(brandRepository.findAllByIds(List.of(1L))).thenReturn(List.of(brand));
 
             // when
             var result = service.getProducts(1L, null, 0, 20);
 
             // then
-            assertThat(result.getContent()).hasSize(1);
+            assertThat(result.content()).hasSize(1);
         }
 
         @Test
         @DisplayName("가격 오름차순 정렬")
         void getProducts_sortByPriceAsc() {
             // given
-            Page<Product> page = new PageImpl<>(List.of(), PageRequest.of(0, 20), 0);
-            when(productRepository.findAllByDeletedAtIsNull(eq(null), any())).thenReturn(page);
+            PageResult<Product> pageResult = new PageResult<>(List.of(), 0, 20, 0, 0);
+            when(productRepository.findAllActive(eq(null), eq("price_asc"), eq(0), eq(20))).thenReturn(pageResult);
+            when(brandRepository.findAllByIds(List.of())).thenReturn(List.of());
 
             // when
             service.getProducts(null, "price_asc", 0, 20);
 
             // then
-            verify(productRepository).findAllByDeletedAtIsNull(eq(null), any());
+            verify(productRepository).findAllActive(eq(null), eq("price_asc"), eq(0), eq(20));
         }
     }
 
     private Product createProduct(Long id, Long brandId, String name, int price) {
-        return Product.reconstitute(id, brandId, ProductName.of(name), Price.of(price),
-                Stock.of(100), LikeCount.of(5), Description.ofNullable("설명"),
-                LocalDateTime.now(), LocalDateTime.now(), null);
+        return Product.reconstitute(new ProductData(id, brandId, ProductName.of(name), Price.of(price),
+                null, Stock.of(100), 5, "설명",
+                LocalDateTime.now(), LocalDateTime.now(), null));
     }
 
     private Brand createBrand(Long id, String name) {
-        return Brand.reconstitute(id, BrandName.of(name), "설명",
-                LocalDateTime.now(), LocalDateTime.now(), null);
+        return Brand.reconstitute(new BrandData(id, BrandName.of(name), "설명",
+                LocalDateTime.now(), LocalDateTime.now(), null));
     }
 }

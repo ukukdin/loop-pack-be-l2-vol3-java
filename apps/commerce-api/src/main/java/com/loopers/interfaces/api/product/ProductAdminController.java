@@ -9,7 +9,7 @@ import com.loopers.interfaces.api.product.dto.ProductCreateRequest;
 import com.loopers.interfaces.api.product.dto.ProductDetailResponse;
 import com.loopers.interfaces.api.product.dto.ProductSummaryResponse;
 import com.loopers.interfaces.api.product.dto.ProductUpdateRequest;
-import org.springframework.data.domain.Page;
+import com.loopers.domain.model.common.PageResult;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -37,25 +37,21 @@ public class ProductAdminController {
             @RequestParam(required = false) Long brandId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        Page<ProductQueryUseCase.ProductSummaryInfo> products =
+        PageResult<ProductQueryUseCase.ProductSummaryInfo> products =
                 productQueryUseCase.getProducts(brandId, null, page, size);
         return ResponseEntity.ok(PageResponse.from(products, ProductSummaryResponse::from));
     }
 
     @PostMapping
     public ResponseEntity<Void> createProduct(@RequestBody ProductCreateRequest request) {
-        createProductUseCase.createProduct(
-                request.brandId(), request.name(), request.price(), request.stock(), request.description()
-        );
+        createProductUseCase.createProduct(request.toCommand());
         return ResponseEntity.ok().build();
     }
 
     @PutMapping("/{productId}")
     public ResponseEntity<Void> updateProduct(@PathVariable Long productId,
                                               @RequestBody ProductUpdateRequest request) {
-        updateProductUseCase.updateProduct(
-                productId, request.name(), request.price(), request.stock(), request.description()
-        );
+        updateProductUseCase.updateProduct(request.toCommand(productId));
         return ResponseEntity.ok().build();
     }
 

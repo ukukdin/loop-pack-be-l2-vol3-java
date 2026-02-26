@@ -82,4 +82,24 @@ class UserNameTest {
                 .hasMessageContaining("한글 또는 영문");
     }
 
+    @Test
+    @DisplayName("2자 이름 마스킹")
+    void maskedValue_2chars() {
+        UserName name = UserName.of("홍길");
+        assertThat(name.maskedValue()).isEqualTo("홍*");
+    }
+
+    @Test
+    @DisplayName("3자 이름 마스킹")
+    void maskedValue_3chars() {
+        UserName name = UserName.of("홍길동");
+        assertThat(name.maskedValue()).isEqualTo("홍길*");
+    }
+
+    @Test
+    @DisplayName("영문 이름 마스킹")
+    void maskedValue_english() {
+        UserName name = UserName.of("John");
+        assertThat(name.maskedValue()).isEqualTo("Joh*");
+    }
 }

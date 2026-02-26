@@ -4,7 +4,7 @@ import com.loopers.application.product.ProductQueryUseCase;
 import com.loopers.interfaces.api.common.PageResponse;
 import com.loopers.interfaces.api.product.dto.ProductDetailResponse;
 import com.loopers.interfaces.api.product.dto.ProductSummaryResponse;
-import org.springframework.data.domain.Page;
+import com.loopers.domain.model.common.PageResult;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -24,7 +24,7 @@ public class ProductController {
             @RequestParam(required = false) String sort,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        Page<ProductQueryUseCase.ProductSummaryInfo> products =
+        PageResult<ProductQueryUseCase.ProductSummaryInfo> products =
                 productQueryUseCase.getProducts(brandId, sort, page, size);
         return ResponseEntity.ok(PageResponse.from(products, ProductSummaryResponse::from));
     }

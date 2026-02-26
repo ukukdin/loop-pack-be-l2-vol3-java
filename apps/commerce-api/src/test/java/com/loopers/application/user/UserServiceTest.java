@@ -1,5 +1,6 @@
 package com.loopers.application.user;
 
+import com.loopers.application.user.RegisterUseCase.RegisterCommand;
 import com.loopers.domain.model.user.*;
 import com.loopers.domain.repository.UserRepository;
 import com.loopers.domain.service.PasswordEncoder;
@@ -49,8 +50,9 @@ class UserServiceTest {
             when(passwordEncoder.encrypt(anyString())).thenReturn("encoded_password");
 
             // when & then
+            var command = new RegisterCommand(loginId, name, rawPassword, BIRTHDAY, email);
             assertThatNoException()
-                    .isThrownBy(() -> service.register(loginId, name, rawPassword, BIRTHDAY, email));
+                    .isThrownBy(() -> service.register(command));
 
             verify(passwordEncoder).encrypt(rawPassword);
             verify(userRepository).save(any(User.class));
@@ -70,7 +72,8 @@ class UserServiceTest {
                     .when(userRepository).save(any(User.class));
 
             // when & then
-            assertThatThrownBy(() -> service.register(duplicatedId, name, rawPassword, BIRTHDAY, email))
+            var command = new RegisterCommand(duplicatedId, name, rawPassword, BIRTHDAY, email);
+            assertThatThrownBy(() -> service.register(command))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("이미 사용중인 ID");
         }
@@ -165,16 +168,16 @@ class UserServiceTest {
         void getUserInfo_success() {
             // given
             UserId userId = UserId.of("test1234");
-            User user = User.reconstitute(
+            User user = User.reconstitute(new UserData(
                     1L,
                     userId,
                     UserName.of("홍길동"),
                     "encoded_password",
                     Birthday.of(BIRTHDAY),
                     Email.of("test@example.com"),
-                    WrongPasswordCount.init(),
+                    0,
                     LocalDateTime.now()
-            );
+            ));
 
             when(userRepository.findById(userId)).thenReturn(Optional.of(user));
 
@@ -193,16 +196,16 @@ class UserServiceTest {
         void getUserInfo_maskedName_2chars() {
             // given
             UserId userId = UserId.of("test1234");
-            User user = User.reconstitute(
+            User user = User.reconstitute(new UserData(
                     1L,
                     userId,
                     UserName.of("홍길"),
                     "encoded_password",
                     Birthday.of(BIRTHDAY),
                     Email.of("test@example.com"),
-                    WrongPasswordCount.init(),
+                    0,
                     LocalDateTime.now()
-            );
+            ));
 
             when(userRepository.findById(userId)).thenReturn(Optional.of(user));
 
@@ -237,15 +240,15 @@ class UserServiceTest {
     }
 
     private User createUser(UserId userId, String encodedPassword) {
-        return User.reconstitute(
+        return User.reconstitute(new UserData(
                 1L,
                 userId,
                 UserName.of("홍길동"),
                 encodedPassword,
                 Birthday.of(BIRTHDAY),
                 Email.of("test@example.com"),
-                WrongPasswordCount.init(),
+                0,
                 LocalDateTime.now()
-        );
+        ));
     }
 }

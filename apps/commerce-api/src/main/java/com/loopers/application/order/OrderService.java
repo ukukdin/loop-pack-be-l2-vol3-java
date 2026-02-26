@@ -30,8 +30,7 @@ public class OrderService implements CreateOrderUseCase, CancelOrderUseCase, Upd
     public void createOrder(UserId userId, OrderCommand command) {
         List<OrderLine> orderLines = command.items().stream()
                 .map(itemCommand -> {
-                    Product product = productRepository.findById(itemCommand.productId())
-                            .filter(p -> !p.isDeleted())
+                    Product product = productRepository.findActiveByIdWithLock(itemCommand.productId())
                             .orElseThrow(() -> new IllegalArgumentException("상품을 찾을 수 없습니다. ID: " + itemCommand.productId()));
 
                     Product decreased = product.decreaseStock(itemCommand.quantity());
@@ -41,21 +40,20 @@ public class OrderService implements CreateOrderUseCase, CancelOrderUseCase, Upd
                             product.getId(),
                             product.getName().getValue(),
                             Money.of(product.getPrice().getValue()),
-                            Quantity.of(itemCommand.quantity())
+                            itemCommand.quantity()
                     );
                 })
                 .toList();
 
-        PaymentMethod paymentMethod = PaymentMethod.valueOf(command.paymentMethod());
-        Order order = Order.create(
-                userId, orderLines,
-                ReceiverName.of(command.receiverName()),
-                Address.of(command.address()),
+        DeliveryInfo deliveryInfo = DeliveryInfo.of(
+                command.receiverName(),
+                command.address(),
                 command.deliveryRequest(),
-                paymentMethod,
-                Money.zero(),
                 command.desiredDeliveryDate()
         );
+
+        PaymentMethod paymentMethod = PaymentMethod.valueOf(command.paymentMethod());
+        Order order = Order.create(userId, orderLines, deliveryInfo, paymentMethod, Money.zero());
 
         orderRepository.save(order);
     }
@@ -77,7 +75,7 @@ public class OrderService implements CreateOrderUseCase, CancelOrderUseCase, Upd
                 .filter(o -> o.getUserId().equals(userId))
                 .orElseThrow(() -> new IllegalArgumentException("주문을 찾을 수 없습니다."));
 
-        Order updated = order.updateDeliveryAddress(Address.of(newAddress));
+        Order updated = order.updateDeliveryAddress(newAddress);
         orderRepository.save(updated);
     }
 }

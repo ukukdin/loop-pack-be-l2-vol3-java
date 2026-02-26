@@ -36,8 +36,9 @@ public class Like extends AggregateRoot {
     }
 
     public Like markUnliked() {
-        registerEvent(new ProductUnlikedEvent(this.productId));
-        return this;
+        Like unliked = new Like(this.id, this.userId, this.productId, this.createdAt);
+        unliked.registerEvent(new ProductUnlikedEvent(this.productId));
+        return unliked;
     }
 
     public static Like reconstitute(Long id, UserId userId, Long productId, LocalDateTime createdAt) {

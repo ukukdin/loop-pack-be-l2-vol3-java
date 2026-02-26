@@ -76,8 +76,8 @@ public class OrderQueryService implements OrderQueryUseCase {
 
         return new OrderDetail(
                 order.getId(),
-                order.getReceiverName().getValue(),
-                order.getAddress().getValue(),
+                order.getReceiverName(),
+                order.getAddress(),
                 order.getDeliveryRequest(),
                 order.getPaymentMethod().name(),
                 order.getTotalAmount().getValue(),
@@ -92,7 +92,7 @@ public class OrderQueryService implements OrderQueryUseCase {
     private OrderItemDetail toOrderItemDetail(OrderItem item) {
         return new OrderItemDetail(
                 item.getProductId(),
-                item.getQuantity().getValue(),
+                item.getQuantity(),
                 item.getUnitPrice().getValue()
         );
     }

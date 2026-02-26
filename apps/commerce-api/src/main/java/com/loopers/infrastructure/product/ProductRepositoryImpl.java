@@ -1,9 +1,11 @@
 package com.loopers.infrastructure.product;
 
+import com.loopers.domain.model.common.PageResult;
 import com.loopers.domain.model.product.*;
 import com.loopers.domain.repository.ProductRepository;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -32,14 +34,32 @@ public class ProductRepositoryImpl implements ProductRepository {
     }
 
     @Override
-    public Page<Product> findAllByDeletedAtIsNull(Long brandId, Pageable pageable) {
-        Page<ProductJpaEntity> page;
+    public Optional<Product> findActiveById(Long id) {
+        return findById(id).filter(p -> !p.isDeleted());
+    }
+
+    @Override
+    public Optional<Product> findActiveByIdWithLock(Long id) {
+        return productJpaRepository.findByIdForUpdate(id)
+                .map(this::toDomain)
+                .filter(p -> !p.isDeleted());
+    }
+
+    @Override
+    public PageResult<Product> findAllActive(Long brandId, String sort, int page, int size) {
+        Sort sorting = resolveSort(sort);
+        PageRequest pageRequest = PageRequest.of(page, size, sorting);
+
+        Page<ProductJpaEntity> jpaPage;
         if (brandId != null) {
-            page = productJpaRepository.findAllByBrandIdAndDeletedAtIsNull(brandId, pageable);
+            jpaPage = productJpaRepository.findAllByBrandIdAndDeletedAtIsNull(brandId, pageRequest);
         } else {
-            page = productJpaRepository.findAllByDeletedAtIsNull(pageable);
+            jpaPage = productJpaRepository.findAllByDeletedAtIsNull(pageRequest);
         }
-        return page.map(this::toDomain);
+
+        List<Product> content = jpaPage.getContent().stream().map(this::toDomain).toList();
+        return new PageResult<>(content, jpaPage.getNumber(), jpaPage.getSize(),
+                jpaPage.getTotalElements(), jpaPage.getTotalPages());
     }
 
     @Override
@@ -49,15 +69,28 @@ public class ProductRepositoryImpl implements ProductRepository {
                 .toList();
     }
 
+    private Sort resolveSort(String sort) {
+        if (sort == null) {
+            return Sort.by(Sort.Direction.DESC, "createdAt");
+        }
+        return switch (sort) {
+            case "price_asc" -> Sort.by(Sort.Direction.ASC, "price");
+            case "price_desc" -> Sort.by(Sort.Direction.DESC, "price");
+            case "likes_desc" -> Sort.by(Sort.Direction.DESC, "likeCount");
+            default -> Sort.by(Sort.Direction.DESC, "createdAt");
+        };
+    }
+
     private ProductJpaEntity toEntity(Product product) {
         return new ProductJpaEntity(
                 product.getId(),
                 product.getBrandId(),
                 product.getName().getValue(),
                 product.getPrice().getValue(),
+                product.getSalePrice() != null ? product.getSalePrice().getValue() : null,
                 product.getStock().getValue(),
-                product.getLikeCount().getValue(),
-                product.getDescription().getValueOrNull(),
+                product.getLikeCount(),
+                product.getDescription(),
                 product.getCreatedAt(),
                 product.getUpdatedAt(),
                 product.getDeletedAt()
@@ -65,17 +98,18 @@ public class ProductRepositoryImpl implements ProductRepository {
     }
 
     private Product toDomain(ProductJpaEntity entity) {
-        return Product.reconstitute(
+        return Product.reconstitute(new ProductData(
                 entity.getId(),
                 entity.getBrandId(),
                 ProductName.of(entity.getName()),
                 Price.of(entity.getPrice()),
+                entity.getSalePrice() != null ? Price.of(entity.getSalePrice()) : null,
                 Stock.of(entity.getStockQuantity()),
-                LikeCount.of(entity.getLikeCount()),
-                Description.ofNullable(entity.getDescription()),
+                entity.getLikeCount(),
+                entity.getDescription(),
                 entity.getCreatedAt(),
                 entity.getUpdatedAt(),
                 entity.getDeletedAt()
-        );
+        ));
     }
 }

@@ -58,7 +58,7 @@ class UserApiIntegrationTest {
                     "test@example.com"
             );
 
-            mockMvc.perform(post(BASE_URL + "/register")
+            mockMvc.perform(post(BASE_URL)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isOk());
@@ -76,13 +76,13 @@ class UserApiIntegrationTest {
             );
 
             // 첫 번째 가입
-            mockMvc.perform(post(BASE_URL + "/register")
+            mockMvc.perform(post(BASE_URL)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isOk());
 
             // 동일 ID로 재가입 시도
-            mockMvc.perform(post(BASE_URL + "/register")
+            mockMvc.perform(post(BASE_URL)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isBadRequest());
@@ -99,7 +99,7 @@ class UserApiIntegrationTest {
                     "test@example.com"
             );
 
-            mockMvc.perform(post(BASE_URL + "/register")
+            mockMvc.perform(post(BASE_URL)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isBadRequest());
@@ -116,7 +116,7 @@ class UserApiIntegrationTest {
                     "invalid-email"
             );
 
-            mockMvc.perform(post(BASE_URL + "/register")
+            mockMvc.perform(post(BASE_URL)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isBadRequest());
@@ -267,7 +267,7 @@ class UserApiIntegrationTest {
                 "test@example.com"
         );
 
-        mockMvc.perform(post(BASE_URL + "/register")
+        mockMvc.perform(post(BASE_URL)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk());

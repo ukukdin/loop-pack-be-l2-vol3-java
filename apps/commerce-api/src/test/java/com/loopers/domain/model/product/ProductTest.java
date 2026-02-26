@@ -13,6 +13,7 @@ class ProductTest {
                 1L,
                 ProductName.of("에어맥스 90"),
                 Price.of(139000),
+                null,
                 Stock.of(50),
                 "나이키 에어맥스 90"
         );
@@ -28,8 +29,27 @@ class ProductTest {
         assertThat(product.getName().getValue()).isEqualTo("에어맥스 90");
         assertThat(product.getPrice().getValue()).isEqualTo(139000);
         assertThat(product.getStock().getValue()).isEqualTo(50);
-        assertThat(product.getLikeCount().getValue()).isEqualTo(0);
+        assertThat(product.getLikeCount()).isEqualTo(0);
         assertThat(product.isDeleted()).isFalse();
+        assertThat(product.isOnSale()).isFalse();
+        assertThat(product.getDiscountRate()).isEqualTo(0);
+    }
+
+    @Test
+    @DisplayName("세일 상품 생성")
+    void create_withSalePrice() {
+        Product product = Product.create(
+                1L,
+                ProductName.of("에어맥스 90"),
+                Price.of(139000),
+                Price.of(99000),
+                Stock.of(50),
+                "나이키 에어맥스 90"
+        );
+
+        assertThat(product.isOnSale()).isTrue();
+        assertThat(product.getSalePrice().getValue()).isEqualTo(99000);
+        assertThat(product.getDiscountRate()).isEqualTo(28); // (139000-99000)*100/139000 = 28
     }
 
     @Test
@@ -39,6 +59,7 @@ class ProductTest {
         Product updated = product.update(
                 ProductName.of("에어맥스 95"),
                 Price.of(159000),
+                null,
                 Stock.of(30),
                 "나이키 에어맥스 95"
         );
@@ -93,7 +114,7 @@ class ProductTest {
         Product product = createProduct();
         Product liked = product.increaseLikeCount();
 
-        assertThat(liked.getLikeCount().getValue()).isEqualTo(1);
+        assertThat(liked.getLikeCount()).isEqualTo(1);
     }
 
     @Test
@@ -102,7 +123,7 @@ class ProductTest {
         Product product = createProduct().increaseLikeCount();
         Product unliked = product.decreaseLikeCount();
 
-        assertThat(unliked.getLikeCount().getValue()).isEqualTo(0);
+        assertThat(unliked.getLikeCount()).isEqualTo(0);
     }
 
     @Test
@@ -113,5 +134,16 @@ class ProductTest {
         assertThatThrownBy(product::decreaseLikeCount)
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("0 미만");
+    }
+
+    @Test
+    @DisplayName("품절 여부 확인")
+    void isSoldOut() {
+        Product soldOut = Product.create(1L, ProductName.of("품절상품"), Price.of(10000), null,
+                Stock.of(0), "설명");
+        Product inStock = createProduct();
+
+        assertThat(soldOut.isSoldOut()).isTrue();
+        assertThat(inStock.isSoldOut()).isFalse();
     }
 }

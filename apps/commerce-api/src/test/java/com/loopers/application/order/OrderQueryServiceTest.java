@@ -182,13 +182,15 @@ class OrderQueryServiceTest {
 
     private Order createOrder(Long id, UserId userId, OrderStatus status) {
         List<OrderItem> items = List.of(
-                OrderItem.reconstitute(1L, 1L, Quantity.of(2), Money.of(50000))
+                OrderItem.reconstitute(1L, 1L, 2, Money.of(50000))
         );
-        return Order.reconstitute(id, userId, items, null,
-                ReceiverName.of("홍길동"), Address.of("서울시 강남구"),
-                "배송 요청", PaymentMethod.CARD,
-                Money.of(100000), Money.zero(), Money.of(100000),
-                status, LocalDate.now().plusDays(3),
-                LocalDateTime.now(), LocalDateTime.now());
+        DeliveryInfo deliveryInfo = DeliveryInfo.of(
+                "홍길동", "서울시 강남구",
+                "배송 요청", LocalDate.now().plusDays(3));
+        OrderAmount orderAmount = OrderAmount.reconstitute(
+                PaymentMethod.CARD, Money.of(100000), Money.zero(), Money.of(100000));
+        return Order.reconstitute(new OrderData(id, userId, items, null,
+                deliveryInfo, orderAmount, status,
+                LocalDateTime.now(), LocalDateTime.now()));
     }
 }
