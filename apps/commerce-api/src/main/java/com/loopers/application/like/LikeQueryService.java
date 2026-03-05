@@ -5,7 +5,6 @@ import com.loopers.domain.model.product.ProductPricing;
 import com.loopers.domain.model.user.UserId;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Stream;

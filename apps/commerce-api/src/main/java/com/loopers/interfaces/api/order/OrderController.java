@@ -10,6 +10,7 @@ import com.loopers.interfaces.api.order.dto.OrderCreateRequest;
 import com.loopers.interfaces.api.order.dto.OrderDetailResponse;
 import com.loopers.interfaces.api.order.dto.OrderSummaryResponse;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -38,7 +39,7 @@ public class OrderController {
 
     @PostMapping
     public ResponseEntity<Void> createOrder(HttpServletRequest request,
-                                            @RequestBody OrderCreateRequest orderCreateRequest) {
+                                            @Valid @RequestBody OrderCreateRequest orderCreateRequest) {
         UserId userId = (UserId) request.getAttribute("authenticatedUserId");
         createOrderUseCase.createOrder(userId, orderCreateRequest.toCommand());
         return ResponseEntity.ok().build();
@@ -83,7 +84,7 @@ public class OrderController {
     @PutMapping("/{orderId}/delivery-address")
     public ResponseEntity<Void> updateDeliveryAddress(HttpServletRequest request,
                                                       @PathVariable Long orderId,
-                                                      @RequestBody DeliveryAddressUpdateRequest addressRequest) {
+                                                      @Valid @RequestBody DeliveryAddressUpdateRequest addressRequest) {
         UserId userId = (UserId) request.getAttribute("authenticatedUserId");
         updateDeliveryAddressUseCase.updateDeliveryAddress(userId, orderId, addressRequest.address());
         return ResponseEntity.ok().build();

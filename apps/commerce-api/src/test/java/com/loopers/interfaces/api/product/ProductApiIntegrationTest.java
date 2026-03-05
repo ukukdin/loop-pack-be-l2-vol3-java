@@ -72,7 +72,7 @@ class ProductApiIntegrationTest {
                             .header(ADMIN_HEADER, ADMIN_VALUE)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
-                    .andExpect(status().isBadRequest());
+                    .andExpect(status().isNotFound());
         }
     }
 
@@ -118,7 +118,7 @@ class ProductApiIntegrationTest {
 
             // 삭제 확인
             mockMvc.perform(get(PUBLIC_URL + "/1"))
-                    .andExpect(status().isBadRequest());
+                    .andExpect(status().isNotFound());
         }
     }
 

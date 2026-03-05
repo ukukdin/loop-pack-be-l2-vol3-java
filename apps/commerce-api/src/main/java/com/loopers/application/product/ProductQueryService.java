@@ -5,9 +5,10 @@ import com.loopers.domain.model.common.PageResult;
 import com.loopers.domain.model.product.Product;
 import com.loopers.domain.repository.BrandRepository;
 import com.loopers.domain.repository.ProductRepository;
+import com.loopers.support.error.CoreException;
+import com.loopers.support.error.ErrorType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -27,10 +28,10 @@ public class ProductQueryService implements ProductQueryUseCase {
     @Override
     public ProductDetailInfo getProduct(Long productId) {
         Product product = productRepository.findActiveById(productId)
-                .orElseThrow(() -> new IllegalArgumentException("상품을 찾을 수 없습니다."));
+                .orElseThrow(() -> new CoreException(ErrorType.PRODUCT_NOT_FOUND));
 
         Brand brand = brandRepository.findById(product.getBrandId())
-                .orElseThrow(() -> new IllegalArgumentException("브랜드를 찾을 수 없습니다."));
+                .orElseThrow(() -> new CoreException(ErrorType.BRAND_NOT_FOUND));
 
         return new ProductDetailInfo(
                 product.getId(),

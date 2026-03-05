@@ -64,7 +64,7 @@ class OrderApiIntegrationTest {
             var request = new OrderCreateRequest(
                     List.of(new OrderCreateRequest.OrderItemRequest(1L, 2)),
                     "홍길동", "서울시 강남구", "문 앞에 놓아주세요",
-                    "CARD", LocalDate.now().plusDays(3)
+                    "CARD", LocalDate.now().plusDays(3), null
             );
 
             mockMvc.perform(post(ORDER_URL)
@@ -80,7 +80,7 @@ class OrderApiIntegrationTest {
         void createOrder_fail_unauthorized() throws Exception {
             var request = new OrderCreateRequest(
                     List.of(new OrderCreateRequest.OrderItemRequest(1L, 2)),
-                    "홍길동", "서울시", "요청", "CARD", LocalDate.now()
+                    "홍길동", "서울시", "요청", "CARD", LocalDate.now(), null
             );
 
             mockMvc.perform(post(ORDER_URL)
@@ -254,7 +254,7 @@ class OrderApiIntegrationTest {
         var request = new OrderCreateRequest(
                 List.of(new OrderCreateRequest.OrderItemRequest(1L, 2)),
                 "홍길동", "서울시 강남구", "문 앞에 놓아주세요",
-                "CARD", LocalDate.now().plusDays(3)
+                "CARD", LocalDate.now().plusDays(3), null
         );
         mockMvc.perform(post(ORDER_URL)
                         .header("X-Loopers-LoginId", LOGIN_ID)

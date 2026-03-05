@@ -74,7 +74,7 @@ class BrandApiIntegrationTest {
                             .header(ADMIN_HEADER, ADMIN_VALUE)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
-                    .andExpect(status().isBadRequest());
+                    .andExpect(status().isConflict());
         }
 
         @Test
@@ -131,7 +131,7 @@ class BrandApiIntegrationTest {
             // 삭제 확인
             mockMvc.perform(get(ADMIN_BASE_URL + "/1")
                             .header(ADMIN_HEADER, ADMIN_VALUE))
-                    .andExpect(status().isBadRequest());
+                    .andExpect(status().isNotFound());
         }
     }
 
@@ -166,7 +166,7 @@ class BrandApiIntegrationTest {
         @DisplayName("존재하지 않는 브랜드 조회 시 실패")
         void getBrand_fail_notFound() throws Exception {
             mockMvc.perform(get(PUBLIC_BASE_URL + "/999"))
-                    .andExpect(status().isBadRequest());
+                    .andExpect(status().isNotFound());
         }
     }
 

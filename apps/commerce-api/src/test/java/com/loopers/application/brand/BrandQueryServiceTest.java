@@ -4,6 +4,7 @@ import com.loopers.domain.model.brand.Brand;
 import com.loopers.domain.model.brand.BrandData;
 import com.loopers.domain.model.brand.BrandName;
 import com.loopers.domain.repository.BrandRepository;
+import com.loopers.support.error.CoreException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -54,8 +55,7 @@ class BrandQueryServiceTest {
 
             // when & then
             assertThatThrownBy(() -> service.getBrand(999L))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("브랜드를 찾을 수 없습니다");
+                    .isInstanceOf(CoreException.class);
         }
 
         @Test

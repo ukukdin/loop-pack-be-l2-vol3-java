@@ -8,12 +8,13 @@ import java.util.List;
 public record OrderCancelledEvent(
         Long orderId,
         List<CancelledItem> cancelledItems,
+        Long userCouponId,
         LocalDateTime occurredAt
 ) implements DomainEvent {
 
     public record CancelledItem(Long productId, int quantity) {}
 
-    public OrderCancelledEvent(Long orderId, List<CancelledItem> cancelledItems) {
-        this(orderId, cancelledItems, LocalDateTime.now());
+    public OrderCancelledEvent(Long orderId, List<CancelledItem> cancelledItems, Long userCouponId) {
+        this(orderId, cancelledItems, userCouponId, LocalDateTime.now());
     }
 }

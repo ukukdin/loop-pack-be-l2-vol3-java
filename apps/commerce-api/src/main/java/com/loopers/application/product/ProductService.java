@@ -9,6 +9,8 @@ import com.loopers.domain.model.product.ProductName;
 import com.loopers.domain.model.product.Stock;
 import com.loopers.domain.repository.BrandRepository;
 import com.loopers.domain.repository.ProductRepository;
+import com.loopers.support.error.CoreException;
+import com.loopers.support.error.ErrorType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,7 +29,7 @@ public class ProductService implements CreateProductUseCase, UpdateProductUseCas
     @Override
     public void createProduct(ProductCreateCommand command) {
         brandRepository.findActiveById(command.brandId())
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 브랜드입니다."));
+                .orElseThrow(() -> new CoreException(ErrorType.BRAND_NOT_FOUND));
 
         Price salePriceVo = command.salePrice() != null ? Price.of(command.salePrice()) : null;
         Product product = Product.create(command.brandId(), ProductName.of(command.name()),
@@ -53,6 +55,6 @@ public class ProductService implements CreateProductUseCase, UpdateProductUseCas
 
     private Product findProduct(Long productId) {
         return productRepository.findActiveById(productId)
-                .orElseThrow(() -> new IllegalArgumentException("상품을 찾을 수 없습니다."));
+                .orElseThrow(() -> new CoreException(ErrorType.PRODUCT_NOT_FOUND));
     }
 }

@@ -10,6 +10,7 @@ import com.loopers.interfaces.api.product.dto.ProductDetailResponse;
 import com.loopers.interfaces.api.product.dto.ProductSummaryResponse;
 import com.loopers.interfaces.api.product.dto.ProductUpdateRequest;
 import com.loopers.domain.model.common.PageResult;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -43,14 +44,14 @@ public class ProductAdminController {
     }
 
     @PostMapping
-    public ResponseEntity<Void> createProduct(@RequestBody ProductCreateRequest request) {
+    public ResponseEntity<Void> createProduct(@Valid @RequestBody ProductCreateRequest request) {
         createProductUseCase.createProduct(request.toCommand());
         return ResponseEntity.ok().build();
     }
 
     @PutMapping("/{productId}")
     public ResponseEntity<Void> updateProduct(@PathVariable Long productId,
-                                              @RequestBody ProductUpdateRequest request) {
+                                              @Valid @RequestBody ProductUpdateRequest request) {
         updateProductUseCase.updateProduct(request.toCommand(productId));
         return ResponseEntity.ok().build();
     }

@@ -59,7 +59,7 @@ class OrderApiE2ETest {
             var orderRequest = new OrderCreateRequest(
                     List.of(new OrderCreateRequest.OrderItemRequest(1L, 2)),
                     "홍길동", "서울시 강남구", "문 앞에 놓아주세요",
-                    "CARD", LocalDate.now().plusDays(3)
+                    "CARD", LocalDate.now().plusDays(3), null
             );
 
             HttpHeaders authHeaders = createAuthHeaders(LOGIN_ID, PASSWORD);
@@ -228,7 +228,7 @@ class OrderApiE2ETest {
         var request = new OrderCreateRequest(
                 List.of(new OrderCreateRequest.OrderItemRequest(1L, 2)),
                 "홍길동", "서울시 강남구", "문 앞에 놓아주세요",
-                "CARD", LocalDate.now().plusDays(3)
+                "CARD", LocalDate.now().plusDays(3), null
         );
         HttpHeaders headers = createAuthHeaders(LOGIN_ID, PASSWORD);
         headers.setContentType(MediaType.APPLICATION_JSON);

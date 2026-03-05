@@ -51,6 +51,8 @@ public class OrderJpaEntity {
     @Column(nullable = false)
     private String status;
 
+    private Long userCouponId;
+
     private LocalDate desiredDeliveryDate;
 
     @Column(nullable = false, updatable = false)
@@ -65,7 +67,7 @@ public class OrderJpaEntity {
                           OrderSnapshotJpaEntity snapshot, String receiverName, String address,
                           String deliveryRequest, String paymentMethod,
                           int totalAmount, int discountAmount, int paymentAmount,
-                          String status, LocalDate desiredDeliveryDate,
+                          String status, Long userCouponId, LocalDate desiredDeliveryDate,
                           LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.id = id;
         this.userId = userId;
@@ -79,6 +81,7 @@ public class OrderJpaEntity {
         this.discountAmount = discountAmount;
         this.paymentAmount = paymentAmount;
         this.status = status;
+        this.userCouponId = userCouponId;
         this.desiredDeliveryDate = desiredDeliveryDate;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
