@@ -8,7 +8,6 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Repository;
 
-import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -89,7 +88,6 @@ public class CouponRepositoryImpl implements CouponRepository {
                 ip.getIssueEndAt(),
                 ct.getTargetType().name(),
                 targetIdsStr,
-                ct.getMinOrderAmount(),
                 coupon.isDuplicate(),
                 coupon.getStatus().name(),
                 coupon.getExpiredAt(),
@@ -99,7 +97,7 @@ public class CouponRepositoryImpl implements CouponRepository {
     }
 
     private Coupon toDomain(CouponJpaEntity entity) {
-        DiscountPolicy discountPolicy = DiscountPolicy.create(
+        DiscountPolicy discountPolicy = DiscountPolicy.reconstitute(
                 DiscountType.valueOf(entity.getDiscountType()),
                 entity.getDiscountValue(),
                 entity.getMaxDiscountValue(),
@@ -120,8 +118,7 @@ public class CouponRepositoryImpl implements CouponRepository {
 
         CouponTarget applicationTarget = CouponTarget.reconstitute(
                 TargetType.valueOf(entity.getTargetType()),
-                targetIds,
-                entity.getTargetMinOrderAmount() != null ? entity.getTargetMinOrderAmount() : BigDecimal.ZERO
+                targetIds
         );
 
         return Coupon.reconstitute(

@@ -1,5 +1,7 @@
 package com.loopers.domain.model.coupon;
 
+import com.loopers.support.error.CoreException;
+import com.loopers.support.error.ErrorType;
 import lombok.Getter;
 
 import java.time.LocalDateTime;
@@ -78,7 +80,7 @@ public class Coupon {
 
     public Coupon issue() {
         if (!isAvailable()) {
-            throw new IllegalStateException("발급할 수 없는 쿠폰입니다.");
+            throw new CoreException(ErrorType.COUPON_NOT_AVAILABLE);
         }
         IssuancePolicy incremented = this.issuancePolicy.incrementIssuedCount();
         return new Coupon(this.id, this.code, this.name, this.description,

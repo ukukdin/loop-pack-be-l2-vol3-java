@@ -117,7 +117,7 @@ class CouponConcurrencyTest {
                 DiscountType.FIXED, BigDecimal.valueOf(5000), null, BigDecimal.ZERO);
         IssuancePolicy issuancePolicy = IssuancePolicy.create(null, null, null, null);
         CouponTarget couponTarget = CouponTarget.create(
-                TargetType.ALL, Collections.emptyList(), BigDecimal.ZERO);
+                TargetType.ALL, Collections.emptyList());
 
         Coupon coupon = Coupon.create("TESTCODE1", "테스트 쿠폰", "설명",
                 discountPolicy, issuancePolicy,

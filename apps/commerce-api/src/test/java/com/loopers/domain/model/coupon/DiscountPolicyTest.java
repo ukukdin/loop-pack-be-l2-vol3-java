@@ -1,7 +1,7 @@
 package com.loopers.domain.model.coupon;
 
 
-import com.loopers.support.error.CouponException;
+import com.loopers.support.error.CoreException;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
@@ -51,7 +51,35 @@ class DiscountPolicyTest {
                 BigDecimal.valueOf(1.1),  // 110%
                 null,
                 null
-        )).isInstanceOf(CouponException.class);
+        )).isInstanceOf(CoreException.class);
+    }
+
+    @Test
+    void createFromInput으로_퍼센트_변환_성공() {
+        // given
+        DiscountPolicy policy = DiscountPolicy.createFromInput(
+                DiscountType.PERCENTAGE,
+                BigDecimal.valueOf(10),   // 사용자 입력: 10%
+                null,
+                null
+        );
+
+        // then
+        assertThat(policy.getDiscountValue()).isEqualByComparingTo(BigDecimal.valueOf(0.1));
+    }
+
+    @Test
+    void createFromInput으로_정액은_변환없이_통과() {
+        // given
+        DiscountPolicy policy = DiscountPolicy.createFromInput(
+                DiscountType.FIXED,
+                BigDecimal.valueOf(1000),
+                null,
+                null
+        );
+
+        // then
+        assertThat(policy.getDiscountValue()).isEqualByComparingTo(BigDecimal.valueOf(1000));
     }
 
 }

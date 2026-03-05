@@ -1,5 +1,6 @@
 package com.loopers.interfaces.api.coupon;
 
+import com.loopers.application.coupon.CouponAdminQueryUseCase;
 import com.loopers.application.coupon.CouponAdminUseCase;
 import com.loopers.domain.model.common.PageResult;
 import com.loopers.interfaces.api.common.PageResponse;
@@ -17,22 +18,25 @@ import org.springframework.web.bind.annotation.*;
 public class CouponAdminController {
 
     private final CouponAdminUseCase couponAdminUseCase;
+    private final CouponAdminQueryUseCase couponAdminQueryUseCase;
 
-    public CouponAdminController(CouponAdminUseCase couponAdminUseCase) {
+    public CouponAdminController(CouponAdminUseCase couponAdminUseCase,
+                                 CouponAdminQueryUseCase couponAdminQueryUseCase) {
         this.couponAdminUseCase = couponAdminUseCase;
+        this.couponAdminQueryUseCase = couponAdminQueryUseCase;
     }
 
     @GetMapping
     public ResponseEntity<PageResponse<CouponSummaryResponse>> getCoupons(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        PageResult<CouponAdminUseCase.CouponSummary> result = couponAdminUseCase.getCoupons(page, size);
+        PageResult<CouponAdminQueryUseCase.CouponSummary> result = couponAdminQueryUseCase.getCoupons(page, size);
         return ResponseEntity.ok(PageResponse.from(result, CouponSummaryResponse::from));
     }
 
     @GetMapping("/{couponId}")
     public ResponseEntity<CouponDetailResponse> getCoupon(@PathVariable Long couponId) {
-        CouponAdminUseCase.CouponDetail detail = couponAdminUseCase.getCoupon(couponId);
+        CouponAdminQueryUseCase.CouponDetail detail = couponAdminQueryUseCase.getCoupon(couponId);
         return ResponseEntity.ok(CouponDetailResponse.from(detail));
     }
 
@@ -60,8 +64,8 @@ public class CouponAdminController {
             @PathVariable Long couponId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        PageResult<CouponAdminUseCase.IssuedCouponInfo> result =
-                couponAdminUseCase.getIssuedCoupons(couponId, page, size);
+        PageResult<CouponAdminQueryUseCase.IssuedCouponInfo> result =
+                couponAdminQueryUseCase.getIssuedCoupons(couponId, page, size);
         return ResponseEntity.ok(PageResponse.from(result, IssuedCouponResponse::from));
     }
 }

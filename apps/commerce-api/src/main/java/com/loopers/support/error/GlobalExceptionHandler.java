@@ -25,17 +25,6 @@ public class GlobalExceptionHandler {
                 ));
     }
 
-    @ExceptionHandler(CouponException.class)
-    public ResponseEntity<Map<String, Object>> handleCouponException(CouponException e) {
-        log.warn("Coupon exception: {}", e.getMessage());
-        return ResponseEntity
-                .status(HttpStatus.BAD_REQUEST)
-                .body(Map.of(
-                        "code", "COUPON_ERROR",
-                        "message", e.getMessage()
-                ));
-    }
-
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, Object>> handleValidationException(MethodArgumentNotValidException e) {
         String message = e.getBindingResult().getFieldErrors().stream()

@@ -1,6 +1,6 @@
 package com.loopers.domain.model.coupon;
 
-import com.loopers.support.error.CouponException;
+import com.loopers.support.error.CoreException;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
@@ -38,13 +38,13 @@ class IssuancePolicyTest {
     @Test
     void 최대_발급수량이_0이하이면_생성_실패() {
         assertThatThrownBy(() -> IssuancePolicy.create(0, 1, null, null))
-                .isInstanceOf(CouponException.class);
+                .isInstanceOf(CoreException.class);
     }
 
     @Test
     void 인당_발급수량이_총_발급수량_초과시_생성_실패() {
         assertThatThrownBy(() -> IssuancePolicy.create(10, 20, null, null))
-                .isInstanceOf(CouponException.class);
+                .isInstanceOf(CoreException.class);
     }
 
     @Test

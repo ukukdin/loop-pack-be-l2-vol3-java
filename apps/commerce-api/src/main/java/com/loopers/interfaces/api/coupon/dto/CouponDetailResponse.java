@@ -1,6 +1,6 @@
 package com.loopers.interfaces.api.coupon.dto;
 
-import com.loopers.application.coupon.CouponAdminUseCase;
+import com.loopers.application.coupon.CouponAdminQueryUseCase;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -18,7 +18,7 @@ public record CouponDetailResponse(
         LocalDateTime createdAt,
         LocalDateTime updatedAt
 ) {
-    public static CouponDetailResponse from(CouponAdminUseCase.CouponDetail detail) {
+    public static CouponDetailResponse from(CouponAdminQueryUseCase.CouponDetail detail) {
         return new CouponDetailResponse(
                 detail.id(),
                 detail.code(),

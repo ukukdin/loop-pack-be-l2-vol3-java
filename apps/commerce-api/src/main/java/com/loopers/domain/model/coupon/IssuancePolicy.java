@@ -1,7 +1,7 @@
 package com.loopers.domain.model.coupon;
 
-import com.loopers.support.error.CouponErrorCode;
-import com.loopers.support.error.CouponException;
+import com.loopers.support.error.CoreException;
+import com.loopers.support.error.ErrorType;
 import lombok.Getter;
 
 import java.time.LocalDateTime;
@@ -42,7 +42,7 @@ public class IssuancePolicy {
 
     public IssuancePolicy incrementIssuedCount() {
         if (!isIssuable()) {
-            throw new CouponException(CouponErrorCode.EXCEEDED_ISSUANCE);
+            throw new CoreException(ErrorType.COUPON_EXCEEDED);
         }
         return new IssuancePolicy(this.maxIssuanceValue, this.issuedCount + 1,
                 this.maxIssuancePerUser, this.issueStartAt, this.issueEndAt);
@@ -50,11 +50,11 @@ public class IssuancePolicy {
 
     private static void validate(Integer maxIssuanceValue, Integer maxIssuancePerUser) {
         if (maxIssuanceValue != null && maxIssuanceValue <= 0) {
-            throw new CouponException(CouponErrorCode.INVALID_ISSUANCE_COUNT);
+            throw new CoreException(ErrorType.COUPON_INVALID_ISSUANCE_COUNT);
         }
         if (maxIssuancePerUser != null && maxIssuanceValue != null
                 && maxIssuancePerUser > maxIssuanceValue) {
-            throw new CouponException(CouponErrorCode.INVALID_ISSUANCE_PER_USER);
+            throw new CoreException(ErrorType.COUPON_INVALID_ISSUANCE_PER_USER);
         }
     }
 }

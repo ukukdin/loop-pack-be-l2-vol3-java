@@ -49,8 +49,6 @@ public class CouponJpaEntity {
 
     private String targetIds;
 
-    private BigDecimal targetMinOrderAmount;
-
     @Column(nullable = false)
     private boolean isDuplicate;
 
@@ -73,7 +71,7 @@ public class CouponJpaEntity {
                            BigDecimal maxDiscountValue, BigDecimal minOrderAmount,
                            Integer maxIssuanceValue, int issuedCount, Integer maxIssuancePerUser,
                            LocalDateTime issueStartAt, LocalDateTime issueEndAt,
-                           String targetType, String targetIds, BigDecimal targetMinOrderAmount,
+                           String targetType, String targetIds,
                            boolean isDuplicate, String status, LocalDateTime expiredAt,
                            LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.id = id;
@@ -91,7 +89,6 @@ public class CouponJpaEntity {
         this.issueEndAt = issueEndAt;
         this.targetType = targetType;
         this.targetIds = targetIds;
-        this.targetMinOrderAmount = targetMinOrderAmount;
         this.isDuplicate = isDuplicate;
         this.status = status;
         this.expiredAt = expiredAt;
