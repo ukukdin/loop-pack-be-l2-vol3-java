@@ -15,7 +15,8 @@ public interface CreateOrderUseCase {
             String address,
             String deliveryRequest,
             String paymentMethod,
-            LocalDate desiredDeliveryDate
+            LocalDate desiredDeliveryDate,
+            Long couponId
     ) {}
 
     record OrderItemCommand(

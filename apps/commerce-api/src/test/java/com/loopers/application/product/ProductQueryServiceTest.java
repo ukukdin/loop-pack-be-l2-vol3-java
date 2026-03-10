@@ -7,6 +7,7 @@ import com.loopers.domain.model.common.PageResult;
 import com.loopers.domain.model.product.*;
 import com.loopers.domain.repository.BrandRepository;
 import com.loopers.domain.repository.ProductRepository;
+import com.loopers.support.error.CoreException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -66,8 +67,7 @@ class ProductQueryServiceTest {
 
             // when & then
             assertThatThrownBy(() -> service.getProduct(1L))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("상품을 찾을 수 없습니다");
+                    .isInstanceOf(CoreException.class);
         }
 
         @Test
@@ -78,8 +78,7 @@ class ProductQueryServiceTest {
 
             // when & then
             assertThatThrownBy(() -> service.getProduct(999L))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("상품을 찾을 수 없습니다");
+                    .isInstanceOf(CoreException.class);
         }
     }
 

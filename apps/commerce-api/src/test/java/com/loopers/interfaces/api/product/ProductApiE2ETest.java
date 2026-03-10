@@ -113,7 +113,7 @@ class ProductApiE2ETest {
                     PUBLIC_URL + "/1",
                     String.class
             );
-            assertThat(getResponse.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            assertThat(getResponse.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
         }
     }
 
@@ -141,11 +141,11 @@ class ProductApiE2ETest {
             // then - 상품 조회 실패
             ResponseEntity<String> product1Response = restTemplate.getForEntity(
                     PUBLIC_URL + "/1", String.class);
-            assertThat(product1Response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            assertThat(product1Response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
 
             ResponseEntity<String> product2Response = restTemplate.getForEntity(
                     PUBLIC_URL + "/2", String.class);
-            assertThat(product2Response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            assertThat(product2Response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
         }
     }
 

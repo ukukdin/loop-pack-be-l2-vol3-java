@@ -113,7 +113,7 @@ class BrandApiE2ETest {
                     PUBLIC_BASE_URL + "/1",
                     String.class
             );
-            assertThat(getResponse.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            assertThat(getResponse.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
         }
     }
 

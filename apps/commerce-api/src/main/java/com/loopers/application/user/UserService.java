@@ -13,7 +13,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 
 @Service
-@Transactional(readOnly = true)
 public class UserService implements RegisterUseCase, PasswordUpdateUseCase, UserQueryUseCase {
 
     private final UserRepository userRepository;

@@ -12,6 +12,7 @@ public record OrderData(
         OrderSnapshot snapshot,
         DeliveryInfo deliveryInfo,
         OrderAmount orderAmount,
+        Long userCouponId,
         OrderStatus status,
         LocalDateTime createdAt,
         LocalDateTime updatedAt

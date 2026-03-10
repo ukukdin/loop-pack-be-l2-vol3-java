@@ -14,6 +14,8 @@ import org.junit.jupiter.api.Test;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
+import com.loopers.support.error.CoreException;
+
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
@@ -44,7 +46,7 @@ class LikeServiceTest {
             UserId userId = UserId.of("test1234");
             Product product = createProduct(1L, 0);
 
-            when(productRepository.findActiveById(1L)).thenReturn(Optional.of(product));
+            when(productRepository.findActiveByIdWithLock(1L)).thenReturn(Optional.of(product));
             when(likeRepository.existsByUserIdAndProductId(userId, 1L)).thenReturn(false);
 
             // when
@@ -62,7 +64,7 @@ class LikeServiceTest {
             UserId userId = UserId.of("test1234");
             Product product = createProduct(1L, 1);
 
-            when(productRepository.findActiveById(1L)).thenReturn(Optional.of(product));
+            when(productRepository.findActiveByIdWithLock(1L)).thenReturn(Optional.of(product));
             when(likeRepository.existsByUserIdAndProductId(userId, 1L)).thenReturn(true);
 
             // when
@@ -78,12 +80,11 @@ class LikeServiceTest {
         void like_fail_productNotFound() {
             // given
             UserId userId = UserId.of("test1234");
-            when(productRepository.findActiveById(999L)).thenReturn(Optional.empty());
+            when(productRepository.findActiveByIdWithLock(999L)).thenReturn(Optional.empty());
 
             // when & then
             assertThatThrownBy(() -> service.like(userId, 999L))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("상품을 찾을 수 없습니다");
+                    .isInstanceOf(CoreException.class);
         }
     }
 
@@ -99,7 +100,7 @@ class LikeServiceTest {
             Product product = createProduct(1L, 1);
             Like like = Like.reconstitute(1L, userId, 1L, LocalDateTime.now());
 
-            when(productRepository.findActiveById(1L)).thenReturn(Optional.of(product));
+            when(productRepository.findActiveByIdWithLock(1L)).thenReturn(Optional.of(product));
             when(likeRepository.findByUserIdAndProductId(userId, 1L)).thenReturn(Optional.of(like));
 
             // when
@@ -117,7 +118,7 @@ class LikeServiceTest {
             UserId userId = UserId.of("test1234");
             Product product = createProduct(1L, 0);
 
-            when(productRepository.findActiveById(1L)).thenReturn(Optional.of(product));
+            when(productRepository.findActiveByIdWithLock(1L)).thenReturn(Optional.of(product));
             when(likeRepository.findByUserIdAndProductId(userId, 1L)).thenReturn(Optional.empty());
 
             // when

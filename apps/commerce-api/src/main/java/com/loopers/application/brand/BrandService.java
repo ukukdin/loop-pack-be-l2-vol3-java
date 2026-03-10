@@ -4,6 +4,8 @@ import com.loopers.domain.model.brand.Brand;
 import com.loopers.domain.model.brand.BrandName;
 import com.loopers.domain.model.common.DomainEventPublisher;
 import com.loopers.domain.repository.BrandRepository;
+import com.loopers.support.error.CoreException;
+import com.loopers.support.error.ErrorType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,7 +25,7 @@ public class BrandService implements CreateBrandUseCase, UpdateBrandUseCase, Del
     public void createBrand(String name, String description) {
         BrandName brandName = BrandName.of(name);
         if (brandRepository.existsByName(brandName)) {
-            throw new IllegalArgumentException("이미 존재하는 브랜드 이름입니다.");
+            throw new CoreException(ErrorType.CONFLICT, "이미 존재하는 브랜드 이름입니다.");
         }
         Brand brand = Brand.create(brandName, description);
         brandRepository.save(brand);
@@ -46,6 +48,6 @@ public class BrandService implements CreateBrandUseCase, UpdateBrandUseCase, Del
 
     private Brand findBrand(Long brandId) {
         return brandRepository.findActiveById(brandId)
-                .orElseThrow(() -> new IllegalArgumentException("브랜드를 찾을 수 없습니다."));
+                .orElseThrow(() -> new CoreException(ErrorType.BRAND_NOT_FOUND));
     }
 }

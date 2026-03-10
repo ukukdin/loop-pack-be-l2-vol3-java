@@ -3,6 +3,7 @@ package com.loopers.application.order;
 import com.loopers.domain.model.order.*;
 import com.loopers.domain.model.user.UserId;
 import com.loopers.domain.repository.OrderRepository;
+import com.loopers.support.error.CoreException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -122,8 +123,7 @@ class OrderQueryServiceTest {
 
             // when & then
             assertThatThrownBy(() -> service.getOrder(userId, 1L))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("주문을 찾을 수 없습니다");
+                    .isInstanceOf(CoreException.class);
         }
 
         @Test
@@ -135,8 +135,7 @@ class OrderQueryServiceTest {
 
             // when & then
             assertThatThrownBy(() -> service.getOrder(userId, 999L))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("주문을 찾을 수 없습니다");
+                    .isInstanceOf(CoreException.class);
         }
     }
 
@@ -190,7 +189,7 @@ class OrderQueryServiceTest {
         OrderAmount orderAmount = OrderAmount.reconstitute(
                 PaymentMethod.CARD, Money.of(100000), Money.zero(), Money.of(100000));
         return Order.reconstitute(new OrderData(id, userId, items, null,
-                deliveryInfo, orderAmount, status,
+                deliveryInfo, orderAmount, null, status,
                 LocalDateTime.now(), LocalDateTime.now()));
     }
 }

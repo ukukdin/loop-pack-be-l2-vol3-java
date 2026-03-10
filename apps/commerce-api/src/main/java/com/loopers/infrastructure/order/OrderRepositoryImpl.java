@@ -75,6 +75,7 @@ public class OrderRepositoryImpl implements OrderRepository {
                 order.getDiscountAmount().getValue(),
                 order.getPaymentAmount().getValue(),
                 order.getStatus().name(),
+                order.getUserCouponId(),
                 order.getDesiredDeliveryDate(),
                 order.getCreatedAt(),
                 order.getUpdatedAt()
@@ -133,6 +134,7 @@ public class OrderRepositoryImpl implements OrderRepository {
                 snapshot,
                 deliveryInfo,
                 orderAmount,
+                entity.getUserCouponId(),
                 OrderStatus.valueOf(entity.getStatus()),
                 entity.getCreatedAt(),
                 entity.getUpdatedAt()

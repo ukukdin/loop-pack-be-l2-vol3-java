@@ -4,9 +4,10 @@ import com.loopers.domain.model.order.Order;
 import com.loopers.domain.model.order.OrderItem;
 import com.loopers.domain.model.user.UserId;
 import com.loopers.domain.repository.OrderRepository;
+import com.loopers.support.error.CoreException;
+import com.loopers.support.error.ErrorType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
@@ -46,7 +47,7 @@ public class OrderQueryService implements OrderQueryUseCase {
     @Override
     public OrderDetail getOrderDetail(Long orderId) {
         Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new IllegalArgumentException("주문을 찾을 수 없습니다."));
+                .orElseThrow(() -> new CoreException(ErrorType.ORDER_NOT_FOUND));
         return toOrderDetail(order);
     }
 
@@ -54,7 +55,7 @@ public class OrderQueryService implements OrderQueryUseCase {
     public OrderDetail getOrder(UserId userId, Long orderId) {
         Order order = orderRepository.findById(orderId)
                 .filter(o -> o.getUserId().equals(userId))
-                .orElseThrow(() -> new IllegalArgumentException("주문을 찾을 수 없습니다."));
+                .orElseThrow(() -> new CoreException(ErrorType.ORDER_NOT_FOUND));
         return toOrderDetail(order);
     }
 

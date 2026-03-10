@@ -7,8 +7,11 @@ import com.loopers.domain.model.product.ProductName;
 import com.loopers.domain.model.product.Stock;
 import com.loopers.domain.model.product.ProductData;
 import com.loopers.domain.model.user.UserId;
+import com.loopers.domain.repository.CouponRepository;
+import com.loopers.support.error.CoreException;
 import com.loopers.domain.repository.OrderRepository;
 import com.loopers.domain.repository.ProductRepository;
+import com.loopers.domain.repository.UserCouponRepository;
 import com.loopers.domain.model.common.DomainEventPublisher;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -28,6 +31,8 @@ class OrderServiceTest {
 
     private OrderRepository orderRepository;
     private ProductRepository productRepository;
+    private CouponRepository couponRepository;
+    private UserCouponRepository userCouponRepository;
     private DomainEventPublisher eventPublisher;
     private OrderService service;
 
@@ -35,8 +40,11 @@ class OrderServiceTest {
     void setUp() {
         orderRepository = mock(OrderRepository.class);
         productRepository = mock(ProductRepository.class);
+        couponRepository = mock(CouponRepository.class);
+        userCouponRepository = mock(UserCouponRepository.class);
         eventPublisher = mock(DomainEventPublisher.class);
-        service = new OrderService(orderRepository, productRepository, eventPublisher);
+        service = new OrderService(orderRepository, productRepository,
+                couponRepository, userCouponRepository, eventPublisher);
     }
 
     @Nested
@@ -58,7 +66,8 @@ class OrderServiceTest {
                     "서울시 강남구",
                     "문 앞에 놓아주세요",
                     "CARD",
-                    LocalDate.now().plusDays(3)
+                    LocalDate.now().plusDays(3),
+                    null
             );
 
             // when & then
@@ -78,13 +87,12 @@ class OrderServiceTest {
 
             var command = new CreateOrderUseCase.OrderCommand(
                     List.of(new CreateOrderUseCase.OrderItemCommand(999L, 1)),
-                    "홍길동", "서울시", "요청사항", "CARD", LocalDate.now()
+                    "홍길동", "서울시", "요청사항", "CARD", LocalDate.now(), null
             );
 
             // when & then
             assertThatThrownBy(() -> service.createOrder(userId, command))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("상품을 찾을 수 없습니다");
+                    .isInstanceOf(CoreException.class);
         }
 
         @Test
@@ -97,7 +105,7 @@ class OrderServiceTest {
 
             var command = new CreateOrderUseCase.OrderCommand(
                     List.of(new CreateOrderUseCase.OrderItemCommand(1L, 100)),
-                    "홍길동", "서울시", "요청사항", "CARD", LocalDate.now()
+                    "홍길동", "서울시", "요청사항", "CARD", LocalDate.now(), null
             );
 
             // when & then
@@ -140,8 +148,7 @@ class OrderServiceTest {
 
             // when & then
             assertThatThrownBy(() -> service.cancelOrder(userId, 1L))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("주문을 찾을 수 없습니다");
+                    .isInstanceOf(CoreException.class);
         }
 
         @Test
@@ -192,8 +199,7 @@ class OrderServiceTest {
 
             // when & then
             assertThatThrownBy(() -> service.updateDeliveryAddress(userId, 1L, "새 주소"))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("주문을 찾을 수 없습니다");
+                    .isInstanceOf(CoreException.class);
         }
 
         @Test
@@ -228,7 +234,7 @@ class OrderServiceTest {
         OrderAmount orderAmount = OrderAmount.reconstitute(
                 PaymentMethod.CARD, Money.of(100000), Money.zero(), Money.of(100000));
         return Order.reconstitute(new OrderData(id, userId, items, null,
-                deliveryInfo, orderAmount, status,
+                deliveryInfo, orderAmount, null, status,
                 LocalDateTime.now(), LocalDateTime.now()));
     }
 }

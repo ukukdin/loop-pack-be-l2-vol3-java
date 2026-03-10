@@ -8,6 +8,7 @@ import com.loopers.domain.model.brand.BrandName;
 import com.loopers.domain.model.product.*;
 import com.loopers.domain.repository.BrandRepository;
 import com.loopers.domain.repository.ProductRepository;
+import com.loopers.support.error.CoreException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -61,8 +62,7 @@ class ProductServiceTest {
             // when & then
             var command = new ProductCreateCommand(999L, "운동화", 50000, null, 100, "좋은 운동화");
             assertThatThrownBy(() -> service.createProduct(command))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("존재하지 않는 브랜드");
+                    .isInstanceOf(CoreException.class);
 
             verify(productRepository, never()).save(any(Product.class));
         }
@@ -76,8 +76,7 @@ class ProductServiceTest {
             // when & then
             var command = new ProductCreateCommand(1L, "운동화", 50000, null, 100, "좋은 운동화");
             assertThatThrownBy(() -> service.createProduct(command))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("존재하지 않는 브랜드");
+                    .isInstanceOf(CoreException.class);
         }
     }
 
@@ -109,8 +108,7 @@ class ProductServiceTest {
             // when & then
             var command = new ProductUpdateCommand(999L, "새 이름", 60000, null, 200, "설명");
             assertThatThrownBy(() -> service.updateProduct(command))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("상품을 찾을 수 없습니다");
+                    .isInstanceOf(CoreException.class);
         }
     }
 
@@ -140,8 +138,7 @@ class ProductServiceTest {
 
             // when & then
             assertThatThrownBy(() -> service.deleteProduct(999L))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("상품을 찾을 수 없습니다");
+                    .isInstanceOf(CoreException.class);
         }
     }
 

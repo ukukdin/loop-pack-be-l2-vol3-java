@@ -7,6 +7,7 @@ import com.loopers.application.brand.UpdateBrandUseCase;
 import com.loopers.interfaces.api.brand.dto.BrandCreateRequest;
 import com.loopers.interfaces.api.brand.dto.BrandResponse;
 import com.loopers.interfaces.api.brand.dto.BrandUpdateRequest;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -32,14 +33,14 @@ public class BrandAdminController {
     }
 
     @PostMapping
-    public ResponseEntity<Void> createBrand(@RequestBody BrandCreateRequest request) {
+    public ResponseEntity<Void> createBrand(@Valid @RequestBody BrandCreateRequest request) {
         createBrandUseCase.createBrand(request.name(), request.description());
         return ResponseEntity.ok().build();
     }
 
     @PutMapping("/{brandId}")
     public ResponseEntity<Void> updateBrand(@PathVariable Long brandId,
-                                            @RequestBody BrandUpdateRequest request) {
+                                            @Valid @RequestBody BrandUpdateRequest request) {
         updateBrandUseCase.updateBrand(brandId, request.name(), request.description());
         return ResponseEntity.ok().build();
     }

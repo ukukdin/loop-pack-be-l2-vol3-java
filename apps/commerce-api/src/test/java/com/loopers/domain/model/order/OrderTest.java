@@ -31,7 +31,7 @@ class OrderTest {
                 orderLines,
                 deliveryInfo,
                 PaymentMethod.CARD,
-                Money.zero()
+                Money.zero(), null
         );
     }
 
@@ -65,7 +65,7 @@ class OrderTest {
         Order order = Order.create(
                 UserId.of("testuser1"), orderLines,
                 deliveryInfo, PaymentMethod.CARD,
-                Money.of(5000)
+                Money.of(5000), null
         );
 
         assertThat(order.getTotalAmount().getValue()).isEqualTo(50000);
@@ -88,7 +88,7 @@ class OrderTest {
         );
 
         assertThatThrownBy(() -> Order.create(null, orderLines,
-                deliveryInfo, PaymentMethod.CARD, Money.zero()))
+                deliveryInfo, PaymentMethod.CARD, Money.zero(), null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("사용자 ID는 필수입니다.");
     }
@@ -104,7 +104,7 @@ class OrderTest {
         );
 
         assertThatThrownBy(() -> Order.create(UserId.of("testuser1"), List.of(),
-                deliveryInfo, PaymentMethod.CARD, Money.zero()))
+                deliveryInfo, PaymentMethod.CARD, Money.zero(), null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("1개 이상");
     }
@@ -131,7 +131,7 @@ class OrderTest {
         Order order = Order.reconstitute(new OrderData(
                 1L, UserId.of("testuser1"),
                 List.of(OrderItem.create(1L, 1, Money.of(10000))),
-                null, deliveryInfo, orderAmount,
+                null, deliveryInfo, orderAmount, null,
                 OrderStatus.SHIPPING, LocalDateTime.now(), LocalDateTime.now()
         ));
 
@@ -152,7 +152,7 @@ class OrderTest {
         Order order = Order.reconstitute(new OrderData(
                 1L, UserId.of("testuser1"),
                 List.of(OrderItem.create(1L, 1, Money.of(10000))),
-                null, deliveryInfo, orderAmount,
+                null, deliveryInfo, orderAmount, null,
                 OrderStatus.DELIVERED, LocalDateTime.now(), LocalDateTime.now()
         ));
 
@@ -180,7 +180,7 @@ class OrderTest {
         Order order = Order.reconstitute(new OrderData(
                 1L, UserId.of("testuser1"),
                 List.of(OrderItem.create(1L, 1, Money.of(10000))),
-                null, deliveryInfo, orderAmount,
+                null, deliveryInfo, orderAmount, null,
                 OrderStatus.SHIPPING, LocalDateTime.now(), LocalDateTime.now()
         ));
 

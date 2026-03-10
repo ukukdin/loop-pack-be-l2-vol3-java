@@ -19,12 +19,13 @@ public class Order extends AggregateRoot {
     private final OrderSnapshot snapshot;
     private final DeliveryInfo deliveryInfo;
     private final OrderAmount orderAmount;
+    private final Long userCouponId;
     private final OrderStatus status;
     private final LocalDateTime createdAt;
     private final LocalDateTime updatedAt;
 
     private Order(Long id, UserId userId, List<OrderItem> items, OrderSnapshot snapshot,
-                  DeliveryInfo deliveryInfo, OrderAmount orderAmount,
+                  DeliveryInfo deliveryInfo, OrderAmount orderAmount, Long userCouponId,
                   OrderStatus status, LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.id = id;
         this.userId = userId;
@@ -32,6 +33,7 @@ public class Order extends AggregateRoot {
         this.snapshot = snapshot;
         this.deliveryInfo = deliveryInfo;
         this.orderAmount = orderAmount;
+        this.userCouponId = userCouponId;
         this.status = status;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
@@ -39,7 +41,7 @@ public class Order extends AggregateRoot {
 
     public static Order create(UserId userId, List<OrderLine> orderLines,
                                DeliveryInfo deliveryInfo, PaymentMethod paymentMethod,
-                               Money discountAmount) {
+                               Money discountAmount, Long userCouponId) {
         if (userId == null) {
             throw new IllegalArgumentException("사용자 ID는 필수입니다.");
         }
@@ -61,13 +63,13 @@ public class Order extends AggregateRoot {
         LocalDateTime now = LocalDateTime.now();
 
         return new Order(null, userId, items, snapshot, deliveryInfo, orderAmount,
-                OrderStatus.PAYMENT_COMPLETED, now, now);
+                userCouponId, OrderStatus.PAYMENT_COMPLETED, now, now);
     }
 
     public static Order reconstitute(OrderData data) {
         return new Order(data.id(), data.userId(), data.items(), data.snapshot(),
-                data.deliveryInfo(), data.orderAmount(), data.status(),
-                data.createdAt(), data.updatedAt());
+                data.deliveryInfo(), data.orderAmount(), data.userCouponId(),
+                data.status(), data.createdAt(), data.updatedAt());
     }
 
     public Order cancel() {
@@ -80,7 +82,7 @@ public class Order extends AggregateRoot {
         List<OrderCancelledEvent.CancelledItem> cancelledItems = this.items.stream()
                 .map(item -> new OrderCancelledEvent.CancelledItem(item.getProductId(), item.getQuantity()))
                 .toList();
-        cancelled.registerEvent(new OrderCancelledEvent(this.id, cancelledItems));
+        cancelled.registerEvent(new OrderCancelledEvent(this.id, cancelledItems, this.userCouponId));
 
         return cancelled;
     }
@@ -91,7 +93,7 @@ public class Order extends AggregateRoot {
         }
         return new Order(this.id, this.userId, this.items, this.snapshot,
                 this.deliveryInfo.withAddress(newAddress), this.orderAmount,
-                this.status, this.createdAt, LocalDateTime.now());
+                this.userCouponId, this.status, this.createdAt, LocalDateTime.now());
     }
 
     public boolean isCancellable() {
@@ -101,7 +103,7 @@ public class Order extends AggregateRoot {
     private Order withStatus(OrderStatus newStatus) {
         return new Order(this.id, this.userId, this.items, this.snapshot,
                 this.deliveryInfo, this.orderAmount,
-                newStatus, this.createdAt, LocalDateTime.now());
+                this.userCouponId, newStatus, this.createdAt, LocalDateTime.now());
     }
 
     private static Money calculateTotalAmount(List<OrderItem> items) {

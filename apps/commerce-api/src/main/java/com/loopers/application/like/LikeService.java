@@ -6,6 +6,8 @@ import com.loopers.domain.model.product.Product;
 import com.loopers.domain.model.user.UserId;
 import com.loopers.domain.repository.LikeRepository;
 import com.loopers.domain.repository.ProductRepository;
+import com.loopers.support.error.CoreException;
+import com.loopers.support.error.ErrorType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,7 +28,7 @@ public class LikeService implements LikeUseCase, UnlikeUseCase {
 
     @Override
     public void like(UserId userId, Long productId) {
-        findProduct(productId);
+        findProductWithLock(productId);
 
         if (likeRepository.existsByUserIdAndProductId(userId, productId)) {
             return;
@@ -39,7 +41,7 @@ public class LikeService implements LikeUseCase, UnlikeUseCase {
 
     @Override
     public void unlike(UserId userId, Long productId) {
-        findProduct(productId);
+        findProductWithLock(productId);
 
         likeRepository.findByUserIdAndProductId(userId, productId)
                 .ifPresent(like -> {
@@ -49,8 +51,8 @@ public class LikeService implements LikeUseCase, UnlikeUseCase {
                 });
     }
 
-    private Product findProduct(Long productId) {
-        return productRepository.findActiveById(productId)
-                .orElseThrow(() -> new IllegalArgumentException("상품을 찾을 수 없습니다."));
+    private Product findProductWithLock(Long productId) {
+        return productRepository.findActiveByIdWithLock(productId)
+                .orElseThrow(() -> new CoreException(ErrorType.PRODUCT_NOT_FOUND));
     }
 }

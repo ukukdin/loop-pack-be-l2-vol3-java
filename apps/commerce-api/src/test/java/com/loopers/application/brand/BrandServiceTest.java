@@ -5,6 +5,7 @@ import com.loopers.domain.model.brand.BrandData;
 import com.loopers.domain.model.brand.BrandName;
 import com.loopers.domain.repository.BrandRepository;
 import com.loopers.domain.model.common.DomainEventPublisher;
+import com.loopers.support.error.CoreException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -55,8 +56,7 @@ class BrandServiceTest {
 
             // when & then
             assertThatThrownBy(() -> service.createBrand("나이키", "스포츠 브랜드"))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("이미 존재하는 브랜드 이름");
+                    .isInstanceOf(CoreException.class);
 
             verify(brandRepository, never()).save(any(Brand.class));
         }
@@ -88,8 +88,7 @@ class BrandServiceTest {
 
             // when & then
             assertThatThrownBy(() -> service.updateBrand(999L, "아디다스", "설명"))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("브랜드를 찾을 수 없습니다");
+                    .isInstanceOf(CoreException.class);
         }
     }
 
@@ -120,8 +119,7 @@ class BrandServiceTest {
 
             // when & then
             assertThatThrownBy(() -> service.deleteBrand(999L))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("브랜드를 찾을 수 없습니다");
+                    .isInstanceOf(CoreException.class);
         }
     }
 

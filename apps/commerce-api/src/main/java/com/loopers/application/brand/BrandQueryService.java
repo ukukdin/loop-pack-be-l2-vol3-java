@@ -2,9 +2,10 @@ package com.loopers.application.brand;
 
 import com.loopers.domain.model.brand.Brand;
 import com.loopers.domain.repository.BrandRepository;
+import com.loopers.support.error.CoreException;
+import com.loopers.support.error.ErrorType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
 import java.util.List;
 
 @Service
@@ -20,7 +21,7 @@ public class BrandQueryService implements BrandQueryUseCase {
     @Override
     public BrandInfo getBrand(Long brandId) {
         Brand brand = brandRepository.findActiveById(brandId)
-                .orElseThrow(() -> new IllegalArgumentException("브랜드를 찾을 수 없습니다."));
+                .orElseThrow(() -> new CoreException(ErrorType.BRAND_NOT_FOUND));
         return toBrandInfo(brand);
     }
 
