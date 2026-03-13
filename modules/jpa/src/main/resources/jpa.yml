@@ -35,7 +35,7 @@ spring:
   jpa:
     show-sql: true
     hibernate:
-      ddl-auto: validate
+      ddl-auto: create-drop
 
 datasource:
   postgres-jpa:

@@ -24,11 +24,11 @@ public interface ProductJpaRepository extends JpaRepository<ProductJpaEntity, Lo
     @Query("SELECT p FROM ProductJpaEntity p WHERE p.id = :id")
     Optional<ProductJpaEntity> findByIdForUpdate(@Param("id") Long id);
 
-    @Modifying
+    @Modifying(clearAutomatically = true)
     @Query("UPDATE ProductJpaEntity p SET p.likeCount = p.likeCount + 1 WHERE p.id = :productId")
     void incrementLikeCount(@Param("productId") Long productId);
 
-    @Modifying
+    @Modifying(clearAutomatically = true)
     @Query("UPDATE ProductJpaEntity p SET p.likeCount = p.likeCount - 1 WHERE p.id = :productId AND p.likeCount > 0")
-    void decrementLikeCount(@Param("productId") Long productId);
+    int decrementLikeCount(@Param("productId") Long productId);
 }

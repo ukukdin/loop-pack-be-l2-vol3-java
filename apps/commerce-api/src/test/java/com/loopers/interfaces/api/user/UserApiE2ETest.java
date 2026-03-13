@@ -3,7 +3,7 @@ package com.loopers.interfaces.api.user;
 import com.loopers.interfaces.api.user.dto.PasswordUpdateRequest;
 import com.loopers.interfaces.api.user.dto.UserInfoResponse;
 import com.loopers.interfaces.api.user.dto.UserRegisterRequest;
-import com.loopers.testcontainers.MySqlTestContainersConfig;
+import com.loopers.testcontainers.PostgreSQLTestContainersConfig;
 import com.loopers.utils.DatabaseCleanUp;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -20,7 +20,7 @@ import java.time.LocalDate;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@Import(MySqlTestContainersConfig.class)
+@Import(PostgreSQLTestContainersConfig.class)
 class UserApiE2ETest {
 
     @Autowired

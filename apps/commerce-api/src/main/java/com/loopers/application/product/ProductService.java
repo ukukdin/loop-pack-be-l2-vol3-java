@@ -9,6 +9,8 @@ import com.loopers.domain.repository.ProductRepository;
 import com.loopers.infrastructure.cache.CacheConfig;
 import com.loopers.support.error.CoreException;
 import com.loopers.support.error.ErrorType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.stereotype.Service;
@@ -19,6 +21,8 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 @Service
 @Transactional
 public class ProductService implements CreateProductUseCase, UpdateProductUseCase, DeleteProductUseCase {
+
+    private static final Logger log = LoggerFactory.getLogger(ProductService.class);
 
     private final ProductRepository productRepository;
     private final BrandRepository brandRepository;
@@ -80,8 +84,12 @@ public class ProductService implements CreateProductUseCase, UpdateProductUseCas
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {
-                Cache cache = cacheManager.getCache(CacheConfig.PRODUCT_DETAIL);
-                if (cache != null) cache.evict(productId);
+                try {
+                    Cache cache = cacheManager.getCache(CacheConfig.PRODUCT_DETAIL);
+                    if (cache != null) cache.evict(productId);
+                } catch (RuntimeException e) {
+                    log.warn("상품 캐시 무효화 실패 - productId: {}, error: {}", productId, e.getMessage());
+                }
             }
         });
     }
@@ -95,8 +103,12 @@ public class ProductService implements CreateProductUseCase, UpdateProductUseCas
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {
-                Cache cache = cacheManager.getCache(CacheConfig.PRODUCT_LIST);
-                if (cache != null) cache.clear();
+                try {
+                    Cache cache = cacheManager.getCache(CacheConfig.PRODUCT_LIST);
+                    if (cache != null) cache.clear();
+                } catch (RuntimeException e) {
+                    log.warn("상품 목록 캐시 무효화 실패 - error: {}", e.getMessage());
+                }
             }
         });
     }

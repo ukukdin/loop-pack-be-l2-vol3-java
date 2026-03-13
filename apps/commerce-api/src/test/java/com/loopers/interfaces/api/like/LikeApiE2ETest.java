@@ -4,7 +4,7 @@ import com.loopers.interfaces.api.brand.dto.BrandCreateRequest;
 import com.loopers.interfaces.api.product.dto.ProductCreateRequest;
 import com.loopers.interfaces.api.product.dto.ProductDetailResponse;
 import com.loopers.interfaces.api.user.dto.UserRegisterRequest;
-import com.loopers.testcontainers.MySqlTestContainersConfig;
+import com.loopers.testcontainers.PostgreSQLTestContainersConfig;
 import com.loopers.utils.DatabaseCleanUp;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -21,7 +21,7 @@ import java.time.LocalDate;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@Import(MySqlTestContainersConfig.class)
+@Import(PostgreSQLTestContainersConfig.class)
 class LikeApiE2ETest {
 
     @Autowired

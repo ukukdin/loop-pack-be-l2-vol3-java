@@ -1,6 +1,6 @@
 package com.loopers.infrastructure.cache;
 
-import com.loopers.domain.model.brand.event.BrandDeletedEvent;
+import com.loopers.domain.model.brand.event.BrandProductsDeletedEvent;
 import com.loopers.domain.model.like.event.ProductLikedEvent;
 import com.loopers.domain.model.like.event.ProductUnlikedEvent;
 import org.slf4j.Logger;
@@ -33,32 +33,43 @@ public class ProductCacheEvictHandler {
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    public void handleBrandDeleted(BrandDeletedEvent event) {
-        evictAllProductCaches();
+    public void handleBrandProductsDeleted(BrandProductsDeletedEvent event) {
+        event.deletedProductIds().forEach(this::evictProductDetail);
+        evictProductListCache();
         evictBrandList();
     }
 
     private void evictProductDetail(Long productId) {
-        Cache cache = cacheManager.getCache(CacheConfig.PRODUCT_DETAIL);
-        if (cache != null) {
-            cache.evict(productId);
-            log.debug("캐시 무효화 [AFTER_COMMIT] - product::{}", productId);
+        try {
+            Cache cache = cacheManager.getCache(CacheConfig.PRODUCT_DETAIL);
+            if (cache != null) {
+                cache.evict(productId);
+                log.debug("캐시 무효화 [AFTER_COMMIT] - product::{}", productId);
+            }
+        } catch (RuntimeException e) {
+            log.warn("캐시 무효화 실패 [AFTER_COMMIT] - product::{}, error: {}", productId, e.getMessage());
         }
     }
 
-    private void evictAllProductCaches() {
-        Cache detailCache = cacheManager.getCache(CacheConfig.PRODUCT_DETAIL);
-        Cache listCache = cacheManager.getCache(CacheConfig.PRODUCT_LIST);
-        if (detailCache != null) detailCache.clear();
-        if (listCache != null) listCache.clear();
-        log.debug("캐시 무효화 [AFTER_COMMIT] - product::*, products::*");
+    private void evictProductListCache() {
+        try {
+            Cache listCache = cacheManager.getCache(CacheConfig.PRODUCT_LIST);
+            if (listCache != null) listCache.clear();
+            log.debug("캐시 무효화 [AFTER_COMMIT] - products::*");
+        } catch (RuntimeException e) {
+            log.warn("캐시 무효화 실패 [AFTER_COMMIT] - products, error: {}", e.getMessage());
+        }
     }
 
     private void evictBrandList() {
-        Cache cache = cacheManager.getCache(CacheConfig.BRAND_LIST);
-        if (cache != null) {
-            cache.clear();
-            log.debug("캐시 무효화 [AFTER_COMMIT] - brands::*");
+        try {
+            Cache cache = cacheManager.getCache(CacheConfig.BRAND_LIST);
+            if (cache != null) {
+                cache.clear();
+                log.debug("캐시 무효화 [AFTER_COMMIT] - brands::*");
+            }
+        } catch (RuntimeException e) {
+            log.warn("캐시 무효화 실패 [AFTER_COMMIT] - brands, error: {}", e.getMessage());
         }
     }
 }

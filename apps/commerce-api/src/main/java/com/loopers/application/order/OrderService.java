@@ -14,6 +14,8 @@ import com.loopers.domain.repository.UserCouponRepository;
 import com.loopers.infrastructure.cache.CacheConfig;
 import com.loopers.support.error.CoreException;
 import com.loopers.support.error.ErrorType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.stereotype.Service;
@@ -28,6 +30,8 @@ import java.util.List;
 @Service
 @Transactional
 public class OrderService implements CreateOrderUseCase, CancelOrderUseCase, UpdateDeliveryAddressUseCase {
+
+    private static final Logger log = LoggerFactory.getLogger(OrderService.class);
 
     private final OrderRepository orderRepository;
     private final ProductRepository productRepository;
@@ -109,9 +113,13 @@ public class OrderService implements CreateOrderUseCase, CancelOrderUseCase, Upd
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {
-                Cache cache = cacheManager.getCache(CacheConfig.PRODUCT_DETAIL);
-                if (cache != null) {
-                    productIds.forEach(cache::evict);
+                try {
+                    Cache cache = cacheManager.getCache(CacheConfig.PRODUCT_DETAIL);
+                    if (cache != null) {
+                        productIds.forEach(cache::evict);
+                    }
+                } catch (RuntimeException e) {
+                    log.warn("주문 후 캐시 무효화 실패 - productIds: {}, error: {}", productIds, e.getMessage());
                 }
             }
         });
