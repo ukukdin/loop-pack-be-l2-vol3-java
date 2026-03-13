@@ -2,10 +2,7 @@ package com.loopers.application.like;
 
 import com.loopers.domain.model.like.event.ProductLikedEvent;
 import com.loopers.domain.model.like.event.ProductUnlikedEvent;
-import com.loopers.domain.model.product.Product;
 import com.loopers.domain.repository.ProductRepository;
-import com.loopers.support.error.CoreException;
-import com.loopers.support.error.ErrorType;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
@@ -20,17 +17,11 @@ public class LikeEventHandler {
 
     @EventListener
     public void handle(ProductLikedEvent event) {
-        Product product = productRepository.findActiveByIdWithLock(event.productId())
-                .orElseThrow(() -> new CoreException(ErrorType.PRODUCT_NOT_FOUND));
-        Product updated = product.increaseLikeCount();
-        productRepository.save(updated);
+        productRepository.incrementLikeCount(event.productId());
     }
 
     @EventListener
     public void handle(ProductUnlikedEvent event) {
-        Product product = productRepository.findActiveByIdWithLock(event.productId())
-                .orElseThrow(() -> new CoreException(ErrorType.PRODUCT_NOT_FOUND));
-        Product updated = product.decreaseLikeCount();
-        productRepository.save(updated);
+        productRepository.decrementLikeCount(event.productId());
     }
 }

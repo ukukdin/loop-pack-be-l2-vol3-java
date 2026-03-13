@@ -5,6 +5,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -22,4 +23,12 @@ public interface ProductJpaRepository extends JpaRepository<ProductJpaEntity, Lo
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT p FROM ProductJpaEntity p WHERE p.id = :id")
     Optional<ProductJpaEntity> findByIdForUpdate(@Param("id") Long id);
+
+    @Modifying
+    @Query("UPDATE ProductJpaEntity p SET p.likeCount = p.likeCount + 1 WHERE p.id = :productId")
+    void incrementLikeCount(@Param("productId") Long productId);
+
+    @Modifying
+    @Query("UPDATE ProductJpaEntity p SET p.likeCount = p.likeCount - 1 WHERE p.id = :productId AND p.likeCount > 0")
+    void decrementLikeCount(@Param("productId") Long productId);
 }

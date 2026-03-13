@@ -12,23 +12,21 @@ spring:
         jdbc.time_zone: UTC
 
 datasource:
-  mysql-jpa:
+  postgres-jpa:
     main:
-      driver-class-name: com.mysql.cj.jdbc.Driver
-      jdbc-url: jdbc:mysql://${MYSQL_HOST}:${MYSQL_PORT}
-      username: ${MYSQL_USER}
-      password: "${MYSQL_PWD}"
-      pool-name: mysql-main-pool
+      driver-class-name: org.postgresql.Driver
+      jdbc-url: jdbc:postgresql://${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
+      username: ${POSTGRES_USER}
+      password: "${POSTGRES_PWD}"
+      pool-name: postgres-main-pool
       maximum-pool-size: 40
       minimum-idle: 30
-      connection-timeout: 3000 # 커넥션 획득 대기시간(ms) ( default: 3000 = 3sec )
-      validation-timeout: 5000 # 커넥션 유효성 검사시간(ms) ( default: 5000 = 5sec )
-      keepalive-time: 0 # 커넥션 최대 생존시간(ms) ( default: 0 )
-      max-lifetime: 1800000 # 커넥션 최대 생존시간(ms) ( default: 1800000 = 30min )
-      leak-detection-threshold: 0  # 커넥션 누수 감지 (주어진 ms 내에 반환 안 하면 로그 경고) ( default: 0 = 비활성화 )
-      initialization-fail-timeout: 1  # DB 연결 실패 시 즉시 예외 발생 ( default: -1 = 무한대기 )
-      data-source-properties:
-        rewriteBatchedStatements: true
+      connection-timeout: 3000
+      validation-timeout: 5000
+      keepalive-time: 0
+      max-lifetime: 1800000
+      leak-detection-threshold: 0
+      initialization-fail-timeout: 1
 
 ---
 spring.config.activate.on-profile: local
@@ -37,12 +35,12 @@ spring:
   jpa:
     show-sql: true
     hibernate:
-      ddl-auto: create
+      ddl-auto: validate
 
 datasource:
-  mysql-jpa:
+  postgres-jpa:
     main:
-      jdbc-url: jdbc:mysql://localhost:3306/loopers
+      jdbc-url: jdbc:postgresql://localhost:5432/loopers
       username: application
       password: application
 
@@ -56,7 +54,7 @@ spring:
       ddl-auto: create
 
 datasource:
-  mysql-jpa:
+  postgres-jpa:
     main:
       maximum-pool-size: 10
       minimum-idle: 5
@@ -69,9 +67,9 @@ spring:
     show-sql: true
 
 datasource:
-  mysql-jpa:
+  postgres-jpa:
     main:
-      jdbc-url: jdbc:mysql://localhost:3306/loopers
+      jdbc-url: jdbc:postgresql://localhost:5432/loopers
       username: application
       password: application
 
@@ -79,9 +77,9 @@ datasource:
 spring.config.activate.on-profile: qa
 
 datasource:
-  mysql-jpa:
+  postgres-jpa:
     main:
-      jdbc-url: jdbc:mysql://localhost:3306/loopers
+      jdbc-url: jdbc:postgresql://localhost:5432/loopers
       username: application
       password: application
 
@@ -89,8 +87,8 @@ datasource:
 spring.config.activate.on-profile: prd
 
 datasource:
-  mysql-jpa:
+  postgres-jpa:
     main:
-      jdbc-url: jdbc:mysql://localhost:3306/loopers
+      jdbc-url: jdbc:postgresql://localhost:5432/loopers
       username: application
       password: application

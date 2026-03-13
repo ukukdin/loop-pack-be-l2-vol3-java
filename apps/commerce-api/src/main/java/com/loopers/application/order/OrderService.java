@@ -11,10 +11,15 @@ import com.loopers.domain.repository.CouponRepository;
 import com.loopers.domain.repository.OrderRepository;
 import com.loopers.domain.repository.ProductRepository;
 import com.loopers.domain.repository.UserCouponRepository;
+import com.loopers.infrastructure.cache.CacheConfig;
 import com.loopers.support.error.CoreException;
 import com.loopers.support.error.ErrorType;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.math.BigDecimal;
 import java.util.Comparator;
@@ -29,15 +34,17 @@ public class OrderService implements CreateOrderUseCase, CancelOrderUseCase, Upd
     private final CouponRepository couponRepository;
     private final UserCouponRepository userCouponRepository;
     private final DomainEventPublisher eventPublisher;
+    private final CacheManager cacheManager;
 
     public OrderService(OrderRepository orderRepository, ProductRepository productRepository,
                         CouponRepository couponRepository, UserCouponRepository userCouponRepository,
-                        DomainEventPublisher eventPublisher) {
+                        DomainEventPublisher eventPublisher, CacheManager cacheManager) {
         this.orderRepository = orderRepository;
         this.productRepository = productRepository;
         this.couponRepository = couponRepository;
         this.userCouponRepository = userCouponRepository;
         this.eventPublisher = eventPublisher;
+        this.cacheManager = cacheManager;
     }
 
     @Override
@@ -83,6 +90,31 @@ public class OrderService implements CreateOrderUseCase, CancelOrderUseCase, Upd
                 discountAmount, command.couponId());
 
         orderRepository.save(order);
+
+        // 4. 트랜잭션 커밋 후 영향받은 상품의 캐시만 개별 무효화
+        List<Long> affectedProductIds = sortedItems.stream()
+                .map(CreateOrderUseCase.OrderItemCommand::productId)
+                .toList();
+        registerAfterCommitCacheEviction(affectedProductIds);
+    }
+
+    private void registerAfterCommitCacheEviction(List<Long> productIds) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            Cache cache = cacheManager.getCache(CacheConfig.PRODUCT_DETAIL);
+            if (cache != null) {
+                productIds.forEach(cache::evict);
+            }
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                Cache cache = cacheManager.getCache(CacheConfig.PRODUCT_DETAIL);
+                if (cache != null) {
+                    productIds.forEach(cache::evict);
+                }
+            }
+        });
     }
 
     private Money processCoupon(UserId userId, Long userCouponId, List<OrderLine> orderLines) {

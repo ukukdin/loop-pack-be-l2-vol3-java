@@ -2,7 +2,6 @@ package com.loopers.application.like;
 
 import com.loopers.domain.model.common.DomainEventPublisher;
 import com.loopers.domain.model.like.Like;
-import com.loopers.domain.model.product.Product;
 import com.loopers.domain.model.user.UserId;
 import com.loopers.domain.repository.LikeRepository;
 import com.loopers.domain.repository.ProductRepository;
@@ -28,7 +27,7 @@ public class LikeService implements LikeUseCase, UnlikeUseCase {
 
     @Override
     public void like(UserId userId, Long productId) {
-        findProductWithLock(productId);
+        validateProductExists(productId);
 
         if (likeRepository.existsByUserIdAndProductId(userId, productId)) {
             return;
@@ -41,7 +40,7 @@ public class LikeService implements LikeUseCase, UnlikeUseCase {
 
     @Override
     public void unlike(UserId userId, Long productId) {
-        findProductWithLock(productId);
+        validateProductExists(productId);
 
         likeRepository.findByUserIdAndProductId(userId, productId)
                 .ifPresent(like -> {
@@ -51,8 +50,8 @@ public class LikeService implements LikeUseCase, UnlikeUseCase {
                 });
     }
 
-    private Product findProductWithLock(Long productId) {
-        return productRepository.findActiveByIdWithLock(productId)
+    private void validateProductExists(Long productId) {
+        productRepository.findActiveById(productId)
                 .orElseThrow(() -> new CoreException(ErrorType.PRODUCT_NOT_FOUND));
     }
 }

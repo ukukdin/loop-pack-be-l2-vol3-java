@@ -19,4 +19,8 @@ public interface ProductRepository {
     PageResult<Product> findAllActive(Long brandId, String sort, int page, int size);
 
     List<Product> findAllByBrandId(Long brandId);
+
+    void incrementLikeCount(Long productId);
+
+    void decrementLikeCount(Long productId);
 }

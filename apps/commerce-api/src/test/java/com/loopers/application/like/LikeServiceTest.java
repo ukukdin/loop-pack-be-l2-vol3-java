@@ -46,7 +46,7 @@ class LikeServiceTest {
             UserId userId = UserId.of("test1234");
             Product product = createProduct(1L, 0);
 
-            when(productRepository.findActiveByIdWithLock(1L)).thenReturn(Optional.of(product));
+            when(productRepository.findActiveById(1L)).thenReturn(Optional.of(product));
             when(likeRepository.existsByUserIdAndProductId(userId, 1L)).thenReturn(false);
 
             // when
@@ -64,7 +64,7 @@ class LikeServiceTest {
             UserId userId = UserId.of("test1234");
             Product product = createProduct(1L, 1);
 
-            when(productRepository.findActiveByIdWithLock(1L)).thenReturn(Optional.of(product));
+            when(productRepository.findActiveById(1L)).thenReturn(Optional.of(product));
             when(likeRepository.existsByUserIdAndProductId(userId, 1L)).thenReturn(true);
 
             // when
@@ -80,7 +80,7 @@ class LikeServiceTest {
         void like_fail_productNotFound() {
             // given
             UserId userId = UserId.of("test1234");
-            when(productRepository.findActiveByIdWithLock(999L)).thenReturn(Optional.empty());
+            when(productRepository.findActiveById(999L)).thenReturn(Optional.empty());
 
             // when & then
             assertThatThrownBy(() -> service.like(userId, 999L))
@@ -100,7 +100,7 @@ class LikeServiceTest {
             Product product = createProduct(1L, 1);
             Like like = Like.reconstitute(1L, userId, 1L, LocalDateTime.now());
 
-            when(productRepository.findActiveByIdWithLock(1L)).thenReturn(Optional.of(product));
+            when(productRepository.findActiveById(1L)).thenReturn(Optional.of(product));
             when(likeRepository.findByUserIdAndProductId(userId, 1L)).thenReturn(Optional.of(like));
 
             // when
@@ -118,7 +118,7 @@ class LikeServiceTest {
             UserId userId = UserId.of("test1234");
             Product product = createProduct(1L, 0);
 
-            when(productRepository.findActiveByIdWithLock(1L)).thenReturn(Optional.of(product));
+            when(productRepository.findActiveById(1L)).thenReturn(Optional.of(product));
             when(likeRepository.findByUserIdAndProductId(userId, 1L)).thenReturn(Optional.empty());
 
             // when

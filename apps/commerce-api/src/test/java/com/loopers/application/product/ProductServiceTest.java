@@ -9,6 +9,7 @@ import com.loopers.domain.model.product.*;
 import com.loopers.domain.repository.BrandRepository;
 import com.loopers.domain.repository.ProductRepository;
 import com.loopers.support.error.CoreException;
+import org.springframework.cache.CacheManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -25,13 +26,15 @@ class ProductServiceTest {
 
     private ProductRepository productRepository;
     private BrandRepository brandRepository;
+    private CacheManager cacheManager;
     private ProductService service;
 
     @BeforeEach
     void setUp() {
         productRepository = mock(ProductRepository.class);
         brandRepository = mock(BrandRepository.class);
-        service = new ProductService(productRepository, brandRepository);
+        cacheManager = mock(CacheManager.class);
+        service = new ProductService(productRepository, brandRepository, cacheManager);
     }
 
     @Nested
