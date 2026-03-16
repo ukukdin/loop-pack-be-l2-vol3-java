@@ -5,8 +5,10 @@ import com.loopers.domain.model.common.PageResult;
 import com.loopers.domain.model.product.Product;
 import com.loopers.domain.repository.BrandRepository;
 import com.loopers.domain.repository.ProductRepository;
+import com.loopers.infrastructure.cache.CacheConfig;
 import com.loopers.support.error.CoreException;
 import com.loopers.support.error.ErrorType;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
@@ -26,6 +28,7 @@ public class ProductQueryService implements ProductQueryUseCase {
     }
 
     @Override
+    @Cacheable(value = CacheConfig.PRODUCT_DETAIL, key = "#productId")
     public ProductDetailInfo getProduct(Long productId) {
         Product product = productRepository.findActiveById(productId)
                 .orElseThrow(() -> new CoreException(ErrorType.PRODUCT_NOT_FOUND));
@@ -48,6 +51,7 @@ public class ProductQueryService implements ProductQueryUseCase {
     }
 
     @Override
+    @Cacheable(value = CacheConfig.PRODUCT_LIST, key = "'brand:' + #brandId + ':sort:' + #sort + ':page:' + #page + ':size:' + #size")
     public PageResult<ProductSummaryInfo> getProducts(Long brandId, String sort, int page, int size) {
         PageResult<Product> products = productRepository.findAllActive(brandId, sort, page, size);
 

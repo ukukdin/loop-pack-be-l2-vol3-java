@@ -6,7 +6,7 @@ import com.loopers.interfaces.api.order.dto.DeliveryAddressUpdateRequest;
 import com.loopers.interfaces.api.order.dto.OrderCreateRequest;
 import com.loopers.interfaces.api.product.dto.ProductCreateRequest;
 import com.loopers.interfaces.api.user.dto.UserRegisterRequest;
-import com.loopers.testcontainers.MySqlTestContainersConfig;
+import com.loopers.testcontainers.PostgreSQLTestContainersConfig;
 import com.loopers.utils.DatabaseCleanUp;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -27,7 +27,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest
 @AutoConfigureMockMvc
-@Import(MySqlTestContainersConfig.class)
+@Import(PostgreSQLTestContainersConfig.class)
 class OrderApiIntegrationTest {
 
     @Autowired

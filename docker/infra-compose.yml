@@ -1,18 +1,20 @@
 version: '3'
 services:
-  mysql:
-    image: mysql:8.0
+  postgres:
+    image: postgres:16
     ports:
-      - "3306:3306"
+      - "5432:5432"
     environment:
-      - MYSQL_ROOT_PASSWORD=root
-      - MYSQL_USER=application
-      - MYSQL_PASSWORD=application
-      - MYSQL_DATABASE=loopers
-      - MYSQL_CHARACTER_SET=utf8mb4
-      - MYSQL_COLLATE=utf8mb4_general_ci
+      - POSTGRES_USER=application
+      - POSTGRES_PASSWORD=application
+      - POSTGRES_DB=loopers
     volumes:
-      - mysql-8-data:/var/lib/mysql
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U application -d loopers"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
   redis-master:
     image: redis:7.0
@@ -101,7 +103,7 @@ services:
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092 # kafka-ui 가 연겷할 브로커 주소
 
 volumes:
-  mysql-8-data:
+  postgres-data:
   redis_master_data:
   redis_readonly_data:
   kafka-data:

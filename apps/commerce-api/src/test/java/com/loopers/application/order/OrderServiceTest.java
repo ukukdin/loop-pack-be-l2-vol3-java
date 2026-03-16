@@ -13,6 +13,7 @@ import com.loopers.domain.repository.OrderRepository;
 import com.loopers.domain.repository.ProductRepository;
 import com.loopers.domain.repository.UserCouponRepository;
 import com.loopers.domain.model.common.DomainEventPublisher;
+import org.springframework.cache.CacheManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -34,6 +35,7 @@ class OrderServiceTest {
     private CouponRepository couponRepository;
     private UserCouponRepository userCouponRepository;
     private DomainEventPublisher eventPublisher;
+    private CacheManager cacheManager;
     private OrderService service;
 
     @BeforeEach
@@ -43,8 +45,9 @@ class OrderServiceTest {
         couponRepository = mock(CouponRepository.class);
         userCouponRepository = mock(UserCouponRepository.class);
         eventPublisher = mock(DomainEventPublisher.class);
+        cacheManager = mock(CacheManager.class);
         service = new OrderService(orderRepository, productRepository,
-                couponRepository, userCouponRepository, eventPublisher);
+                couponRepository, userCouponRepository, eventPublisher, cacheManager);
     }
 
     @Nested

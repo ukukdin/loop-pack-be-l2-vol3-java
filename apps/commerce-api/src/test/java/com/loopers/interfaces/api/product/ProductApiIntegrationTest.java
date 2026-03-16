@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.loopers.interfaces.api.brand.dto.BrandCreateRequest;
 import com.loopers.interfaces.api.product.dto.ProductCreateRequest;
 import com.loopers.interfaces.api.product.dto.ProductUpdateRequest;
-import com.loopers.testcontainers.MySqlTestContainersConfig;
+import com.loopers.testcontainers.PostgreSQLTestContainersConfig;
 import com.loopers.utils.DatabaseCleanUp;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -22,7 +22,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest
 @AutoConfigureMockMvc
-@Import(MySqlTestContainersConfig.class)
+@Import(PostgreSQLTestContainersConfig.class)
 class ProductApiIntegrationTest {
 
     @Autowired

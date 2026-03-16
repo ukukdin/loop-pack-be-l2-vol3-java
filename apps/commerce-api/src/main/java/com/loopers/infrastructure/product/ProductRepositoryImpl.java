@@ -81,6 +81,16 @@ public class ProductRepositoryImpl implements ProductRepository {
         };
     }
 
+    @Override
+    public void incrementLikeCount(Long productId) {
+        productJpaRepository.incrementLikeCount(productId);
+    }
+
+    @Override
+    public void decrementLikeCount(Long productId) {
+        productJpaRepository.decrementLikeCount(productId);
+    }
+
     private ProductJpaEntity toEntity(Product product) {
         return new ProductJpaEntity(
                 product.getId(),

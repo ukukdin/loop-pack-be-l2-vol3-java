@@ -5,7 +5,7 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
 
 @Configuration
-public class MySqlTestContainersConfig {
+public class PostgreSQLTestContainersConfig {
 
     private static final PostgreSQLContainer<?> postgresContainer;
 

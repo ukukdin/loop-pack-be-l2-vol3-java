@@ -3,7 +3,7 @@ package com.loopers.interfaces.api.brand;
 import com.loopers.interfaces.api.brand.dto.BrandCreateRequest;
 import com.loopers.interfaces.api.brand.dto.BrandResponse;
 import com.loopers.interfaces.api.brand.dto.BrandUpdateRequest;
-import com.loopers.testcontainers.MySqlTestContainersConfig;
+import com.loopers.testcontainers.PostgreSQLTestContainersConfig;
 import com.loopers.utils.DatabaseCleanUp;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -18,7 +18,7 @@ import org.springframework.http.*;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@Import(MySqlTestContainersConfig.class)
+@Import(PostgreSQLTestContainersConfig.class)
 class BrandApiE2ETest {
 
     @Autowired
