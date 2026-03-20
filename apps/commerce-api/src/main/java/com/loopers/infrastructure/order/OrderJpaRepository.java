@@ -20,5 +20,6 @@ public interface OrderJpaRepository extends JpaRepository<OrderJpaEntity, Long> 
 
     List<OrderJpaEntity> findAllByUserIdAndCreatedAtBetween(String userId, LocalDateTime startAt, LocalDateTime endAt);
 
-    List<OrderJpaEntity> findByStatusAndCreatedAtBefore(String status, LocalDateTime before);
+    @Query("SELECT DISTINCT o FROM OrderJpaEntity o LEFT JOIN FETCH o.items WHERE o.status = :status AND o.createdAt < :before")
+    List<OrderJpaEntity> findByStatusAndCreatedAtBefore(@Param("status") String status, @Param("before") LocalDateTime before);
 }
