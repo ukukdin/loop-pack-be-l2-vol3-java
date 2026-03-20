@@ -93,7 +93,16 @@ public class PaymentController {
             String cardType,
             @NotBlank(message = "카드 번호는 필수입니다.")
             String cardNo
-    ) {}
+    ) {
+        @Override
+        public String toString() {
+            String masked = (cardNo == null || cardNo.length() < 4)
+                    ? "****"
+                    : "****-****-****-" + cardNo.substring(cardNo.length() - 4);
+            return "PaymentRequest[orderId=%s, cardType=%s, cardNo=%s]"
+                    .formatted(orderId, cardType, masked);
+        }
+    }
 
     record CallbackRequest(
             String transactionKey,
