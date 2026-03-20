@@ -27,6 +27,13 @@ class UserInfoArgumentResolver: HandlerMethodArgumentResolver {
         val userId = webRequest.getHeader(KEY_USER_ID)
             ?: throw CoreException(ErrorType.BAD_REQUEST, "유저 ID 헤더는 필수입니다.")
 
+        val userIdLong = userId.toLongOrNull()
+            ?: throw CoreException(ErrorType.BAD_REQUEST, "유저 ID는 양의 정수여야 합니다. (입력값: $userId)")
+
+        if (userIdLong <= 0) {
+            throw CoreException(ErrorType.BAD_REQUEST, "유저 ID는 양의 정수여야 합니다. (입력값: $userId)")
+        }
+
         return UserInfo(userId)
     }
 }
