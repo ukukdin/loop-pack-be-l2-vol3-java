@@ -29,7 +29,7 @@ import java.util.List;
 
 @Service
 @Transactional
-public class OrderService implements CreateOrderUseCase, CancelOrderUseCase, UpdateDeliveryAddressUseCase {
+public class OrderService implements CreateOrderUseCase, CancelOrderUseCase, UpdateDeliveryAddressUseCase, UpdateOrderPaymentUseCase {
 
     private static final Logger log = LoggerFactory.getLogger(OrderService.class);
 
@@ -52,7 +52,7 @@ public class OrderService implements CreateOrderUseCase, CancelOrderUseCase, Upd
     }
 
     @Override
-    public void createOrder(UserId userId, OrderCommand command) {
+    public CreateOrderResult createOrder(UserId userId, OrderCommand command) {
         // 1. 재고 확인 및 차감 (비관적 락 - productId 순으로 정렬하여 데드락 방지)
         List<CreateOrderUseCase.OrderItemCommand> sortedItems = command.items().stream()
                 .sorted(Comparator.comparingLong(CreateOrderUseCase.OrderItemCommand::productId))
@@ -93,13 +93,28 @@ public class OrderService implements CreateOrderUseCase, CancelOrderUseCase, Upd
         Order order = Order.create(userId, orderLines, deliveryInfo, paymentMethod,
                 discountAmount, command.couponId());
 
-        orderRepository.save(order);
+        Order savedOrder = orderRepository.save(order);
 
         // 4. 트랜잭션 커밋 후 영향받은 상품의 캐시만 개별 무효화
         List<Long> affectedProductIds = sortedItems.stream()
                 .map(CreateOrderUseCase.OrderItemCommand::productId)
                 .toList();
         registerAfterCommitCacheEviction(affectedProductIds);
+
+        return new CreateOrderResult(
+                savedOrder.getId(),
+                (long) savedOrder.getPaymentAmount().getValue()
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public CreateOrderResult getOrderPaymentInfo(UserId userId, Long orderId) {
+        Order order = orderRepository.findById(orderId)
+                .filter(o -> o.getUserId().equals(userId))
+                .orElseThrow(() -> new CoreException(ErrorType.ORDER_NOT_FOUND));
+
+        return new CreateOrderResult(order.getId(), (long) order.getPaymentAmount().getValue());
     }
 
     private void registerAfterCommitCacheEviction(List<Long> productIds) {
@@ -173,6 +188,33 @@ public class OrderService implements CreateOrderUseCase, CancelOrderUseCase, Upd
         userCouponRepository.save(usedCoupon);
 
         return Money.of(discountInt);
+    }
+
+    @Override
+    public void completePayment(Long orderId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new CoreException(ErrorType.ORDER_NOT_FOUND));
+
+        if (order.getStatus() != OrderStatus.PAYMENT_PENDING) {
+            return; // 멱등성: 이미 처리된 주문은 무시
+        }
+
+        Order completed = order.completePayment();
+        orderRepository.save(completed);
+    }
+
+    @Override
+    public void failPayment(Long orderId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new CoreException(ErrorType.ORDER_NOT_FOUND));
+
+        if (order.getStatus() != OrderStatus.PAYMENT_PENDING) {
+            return; // 멱등성: 이미 처리된 주문은 무시
+        }
+
+        Order failed = order.failPayment();
+        orderRepository.save(failed);
+        eventPublisher.publishEvents(failed);
     }
 
     @Override

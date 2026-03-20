@@ -52,6 +52,13 @@ public class OrderRepositoryImpl implements OrderRepository {
                 .toList();
     }
 
+    @Override
+    public List<Order> findByStatusAndCreatedAtBefore(OrderStatus status, LocalDateTime before) {
+        return orderJpaRepository.findByStatusAndCreatedAtBefore(status.name(), before).stream()
+                .map(this::toDomain)
+                .toList();
+    }
+
     private OrderJpaEntity toEntity(Order order) {
         List<OrderItemJpaEntity> itemEntities = order.getItems().stream()
                 .map(this::toItemEntity)

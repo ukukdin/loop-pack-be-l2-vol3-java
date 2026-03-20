@@ -3,6 +3,9 @@ package com.loopers.domain.model.order;
 public enum OrderStatus {
 
     PAYMENT_COMPLETED("결제완료"),
+    PAYMENT_PENDING("결제대기중"),
+    PAYMENT_FAILED("결제실패"),
+
     PREPARING("상품준비중"),
     SHIPPING("배송중"),
     DELIVERED("배송완료"),

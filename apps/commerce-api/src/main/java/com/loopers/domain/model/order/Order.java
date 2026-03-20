@@ -63,7 +63,7 @@ public class Order extends AggregateRoot {
         LocalDateTime now = LocalDateTime.now();
 
         return new Order(null, userId, items, snapshot, deliveryInfo, orderAmount,
-                userCouponId, OrderStatus.PAYMENT_COMPLETED, now, now);
+                userCouponId, OrderStatus.PAYMENT_PENDING, now, now);
     }
 
     public static Order reconstitute(OrderData data) {
@@ -94,6 +94,27 @@ public class Order extends AggregateRoot {
         return new Order(this.id, this.userId, this.items, this.snapshot,
                 this.deliveryInfo.withAddress(newAddress), this.orderAmount,
                 this.userCouponId, this.status, this.createdAt, LocalDateTime.now());
+    }
+
+    public Order completePayment() {
+        if (this.status != OrderStatus.PAYMENT_PENDING) {
+            throw new IllegalStateException("결제 대기 상태에서만 결제 완료 처리가 가능합니다. 현재 상태: " + status.getDescription());
+        }
+        return withStatus(OrderStatus.PAYMENT_COMPLETED);
+    }
+
+    public Order failPayment() {
+        if (this.status != OrderStatus.PAYMENT_PENDING) {
+            throw new IllegalStateException("결제 대기 상태에서만 결제 실패 처리가 가능합니다. 현재 상태: " + status.getDescription());
+        }
+        Order failed = withStatus(OrderStatus.PAYMENT_FAILED);
+
+        List<OrderCancelledEvent.CancelledItem> cancelledItems = this.items.stream()
+                .map(item -> new OrderCancelledEvent.CancelledItem(item.getProductId(), item.getQuantity()))
+                .toList();
+        failed.registerEvent(new OrderCancelledEvent(this.id, cancelledItems, this.userCouponId));
+
+        return failed;
     }
 
     public boolean isCancellable() {

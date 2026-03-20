@@ -1,6 +1,7 @@
 package com.loopers.domain.repository;
 
 import com.loopers.domain.model.order.Order;
+import com.loopers.domain.model.order.OrderStatus;
 import com.loopers.domain.model.user.UserId;
 
 import java.time.LocalDateTime;
@@ -18,4 +19,6 @@ public interface OrderRepository {
     List<Order> findAllByUserIdAndDateRange(UserId userId, LocalDateTime startAt, LocalDateTime endAt);
 
     List<Order> findAll();
+
+    List<Order> findByStatusAndCreatedAtBefore(OrderStatus status, LocalDateTime before);
 }

@@ -7,7 +7,14 @@ import java.util.List;
 
 public interface CreateOrderUseCase {
 
-    void createOrder(UserId userId, OrderCommand command);
+    CreateOrderResult createOrder(UserId userId, OrderCommand command);
+
+    CreateOrderResult getOrderPaymentInfo(UserId userId, Long orderId);
+
+    record CreateOrderResult(
+            Long orderId,
+            Long paymentAmount
+    ) {}
 
     record OrderCommand(
             List<OrderItemCommand> items,

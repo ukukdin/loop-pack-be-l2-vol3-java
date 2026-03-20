@@ -10,4 +10,6 @@ public interface OrderJpaRepository extends JpaRepository<OrderJpaEntity, Long> 
     List<OrderJpaEntity> findAllByUserId(String userId);
 
     List<OrderJpaEntity> findAllByUserIdAndCreatedAtBetween(String userId, LocalDateTime startAt, LocalDateTime endAt);
+
+    List<OrderJpaEntity> findByStatusAndCreatedAtBefore(String status, LocalDateTime before);
 }
