@@ -36,14 +36,15 @@ public class PaymentController {
     }
 
     @PostMapping
-    public ResponseEntity<Void> requestPayment(@RequestAttribute("authenticatedUserId") UserId userId,
-                                               @Valid @RequestBody PaymentRequest request) {
+    public ResponseEntity<PaymentStatusResponse> requestPayment(@RequestAttribute("authenticatedUserId") UserId userId,
+                                                                @Valid @RequestBody PaymentRequest request) {
         // 주문의 결제 금액 조회
         CreateOrderUseCase.CreateOrderResult orderInfo =
                 createOrderUseCase.getOrderPaymentInfo(userId, request.orderId());
 
+        RequestPaymentUseCase.PaymentResult result;
         try {
-            requestPaymentUseCase.requestPayment(userId, new RequestPaymentUseCase.PaymentCommand(
+            result = requestPaymentUseCase.requestPayment(userId, new RequestPaymentUseCase.PaymentCommand(
                     request.orderId(),
                     request.cardType(),
                     request.cardNo(),
@@ -52,9 +53,11 @@ public class PaymentController {
         } catch (Exception e) {
             log.warn("PG 결제 요청 실패 - orderId: {}, 콜백 또는 상태 확인으로 복구 필요",
                     request.orderId(), e);
+            return ResponseEntity.ok(new PaymentStatusResponse(null, "PENDING", "결제 처리 중"));
         }
 
-        return ResponseEntity.ok().build();
+        return ResponseEntity.ok(new PaymentStatusResponse(
+                result.transactionKey(), result.status(), result.reason()));
     }
 
     @PostMapping("/callback")
