@@ -3,9 +3,11 @@ package com.loopers.interfaces.api.payment;
 import com.loopers.application.order.CreateOrderUseCase;
 import com.loopers.application.payment.PaymentCallbackUseCase;
 import com.loopers.application.payment.PaymentQueryUseCase;
+import com.loopers.application.payment.PaymentStatus;
 import com.loopers.application.payment.RequestPaymentUseCase;
 import com.loopers.domain.model.user.UserId;
-import com.loopers.domain.repository.OrderRepository;
+import com.loopers.support.error.CoreException;
+import com.loopers.support.error.ErrorType;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -53,24 +55,38 @@ public class PaymentController {
         } catch (Exception e) {
             log.warn("PG 결제 요청 실패 - orderId: {}, 콜백 또는 상태 확인으로 복구 필요",
                     request.orderId(), e);
-            return ResponseEntity.ok(new PaymentStatusResponse(null, "PENDING", "결제 처리 중"));
+            return ResponseEntity.ok(new PaymentStatusResponse(null, PaymentStatus.PENDING.name(), "결제 처리 중"));
         }
 
         return ResponseEntity.ok(new PaymentStatusResponse(
-                result.transactionKey(), result.status(), result.reason()));
+                result.transactionKey(), result.status().name(), result.reason()));
     }
 
     @PostMapping("/callback")
     public ResponseEntity<Void> handleCallback(@RequestBody CallbackRequest request) {
+        Long orderId = parseOrderId(request.orderId());
+        PaymentStatus status = PaymentStatus.from(request.status());
+
         paymentCallbackUseCase.handleCallback(
                 new PaymentCallbackUseCase.CallbackCommand(
                         request.transactionKey(),
-                        request.orderId(),
-                        request.status(),
+                        orderId,
+                        status,
                         request.reason()
                 )
         );
         return ResponseEntity.ok().build();
+    }
+
+    private Long parseOrderId(String orderId) {
+        if (orderId == null || orderId.isBlank()) {
+            throw new CoreException(ErrorType.VALIDATION_ERROR, "주문 ID는 필수입니다.");
+        }
+        try {
+            return Long.valueOf(orderId);
+        } catch (NumberFormatException e) {
+            throw new CoreException(ErrorType.VALIDATION_ERROR, "주문 ID는 숫자여야 합니다: " + orderId);
+        }
     }
 
     @GetMapping("/status/{orderId}")
@@ -81,7 +97,7 @@ public class PaymentController {
                 paymentQueryUseCase.getPaymentStatus(userId, orderId);
         return ResponseEntity.ok(new PaymentStatusResponse(
                 result.transactionKey(),
-                result.status(),
+                result.status().name(),
                 result.reason()
         ));
     }

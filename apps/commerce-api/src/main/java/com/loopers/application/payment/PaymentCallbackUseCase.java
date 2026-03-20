@@ -6,8 +6,8 @@ public interface PaymentCallbackUseCase {
 
     record CallbackCommand(
             String transactionKey,
-            String orderId,
-            String status,
+            Long orderId,
+            PaymentStatus status,
             String reason
-    ){}
+    ) {}
 }

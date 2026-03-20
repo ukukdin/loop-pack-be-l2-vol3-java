@@ -8,7 +8,7 @@ public interface PaymentQueryUseCase {
 
     record PaymentStatusResult(
             String transactionKey,
-            String status,
+            PaymentStatus status,
             String reason
     ) {}
 }

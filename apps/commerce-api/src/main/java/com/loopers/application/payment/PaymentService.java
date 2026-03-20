@@ -45,7 +45,7 @@ public class PaymentService implements RequestPaymentUseCase, PaymentCallbackUse
         );
         return new PaymentResult(
                 response.data().transactionKey(),
-                response.data().status(),
+                PaymentStatus.from(response.data().status()),
                 response.data().reason()
         );
     }
@@ -57,7 +57,7 @@ public class PaymentService implements RequestPaymentUseCase, PaymentCallbackUse
             return toPaymentResult(getPaymentStatus(userId, command.orderId()));
         } catch (Exception ex) {
             log.warn("PG 상태 확인도 실패 - orderId: {}, 스케줄러에서 복구 예정", command.orderId(), ex);
-            return new PaymentResult(null, "PENDING", "PG 일시적 장애로 결제 대기 중");
+            return new PaymentResult(null, PaymentStatus.PENDING, "PG 일시적 장애로 결제 대기 중");
         }
     }
 
@@ -71,29 +71,28 @@ public class PaymentService implements RequestPaymentUseCase, PaymentCallbackUse
 
         var transactions = response.data().transactions();
         if (transactions == null || transactions.isEmpty()) {
-            return new PaymentStatusResult(null, "PENDING", "PG에 결제 내역 없음");
+            return new PaymentStatusResult(null, PaymentStatus.PENDING, "PG에 결제 내역 없음");
         }
 
         var latest = transactions.get(transactions.size() - 1);
+        PaymentStatus status = PaymentStatus.from(latest.status());
 
-        syncOrderStatus(orderId, latest.status());
+        syncOrderStatus(orderId, status);
 
-        return new PaymentStatusResult(latest.transactionKey(), latest.status(), latest.reason());
+        return new PaymentStatusResult(latest.transactionKey(), status, latest.reason());
     }
 
     @Override
     @Transactional
     public void handleCallback(CallbackCommand command) {
-        Long orderId = Long.valueOf(command.orderId());
-
-        syncOrderStatus(orderId, command.status());
+        syncOrderStatus(command.orderId(), command.status());
     }
 
-    private void syncOrderStatus(Long orderId, String pgStatus) {
-        if ("SUCCESS".equals(pgStatus)) {
-            updateOrderPaymentUseCase.completePayment(orderId);
-        } else if ("FAILED".equals(pgStatus)) {
-            updateOrderPaymentUseCase.failPayment(orderId);
+    private void syncOrderStatus(Long orderId, PaymentStatus status) {
+        switch (status) {
+            case SUCCESS -> updateOrderPaymentUseCase.completePayment(orderId);
+            case FAILED -> updateOrderPaymentUseCase.failPayment(orderId);
+            case PENDING -> { /* 대기 상태 — 변경 없음 */ }
         }
     }
 

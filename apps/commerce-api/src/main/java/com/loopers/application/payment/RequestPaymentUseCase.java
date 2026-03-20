@@ -32,7 +32,7 @@ public interface RequestPaymentUseCase {
 
     record PaymentResult(
             String transactionKey,
-            String status,
+            PaymentStatus status,
             String reason
     ) {}
 }

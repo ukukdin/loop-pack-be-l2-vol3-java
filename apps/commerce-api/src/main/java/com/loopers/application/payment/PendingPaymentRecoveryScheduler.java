@@ -5,6 +5,7 @@ import com.loopers.domain.model.order.OrderStatus;
 import com.loopers.domain.repository.OrderRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -19,7 +20,7 @@ public class PendingPaymentRecoveryScheduler {
 
     private final OrderRepository orderRepository;
     private final PaymentQueryUseCase paymentQueryUseCase;
-
+    private static final int BATCH_SIZE = 100;
     public PendingPaymentRecoveryScheduler(OrderRepository orderRepository,
                                            PaymentQueryUseCase paymentQueryUseCase) {
         this.orderRepository = orderRepository;
@@ -30,7 +31,7 @@ public class PendingPaymentRecoveryScheduler {
     public void recoverPendingPayments() {
         LocalDateTime threshold = LocalDateTime.now().minusMinutes(PENDING_THRESHOLD_MINUTES);
         List<Order> pendingOrders = orderRepository.findByStatusAndCreatedAtBefore(
-                OrderStatus.PAYMENT_PENDING, threshold
+                OrderStatus.PAYMENT_PENDING, threshold, PageRequest.of(0, BATCH_SIZE)
         );
 
         if (pendingOrders.isEmpty()) {
