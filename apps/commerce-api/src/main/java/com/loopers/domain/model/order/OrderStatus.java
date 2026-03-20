@@ -22,10 +22,10 @@ public enum OrderStatus {
     }
 
     public boolean isCancellable() {
-        return this == PAYMENT_COMPLETED || this == PREPARING;
+        return this == PAYMENT_PENDING || this == PAYMENT_COMPLETED || this == PREPARING;
     }
 
     public boolean isAddressChangeable() {
-        return this == PAYMENT_COMPLETED || this == PREPARING;
+        return this == PAYMENT_PENDING || this == PAYMENT_COMPLETED || this == PREPARING;
     }
 }

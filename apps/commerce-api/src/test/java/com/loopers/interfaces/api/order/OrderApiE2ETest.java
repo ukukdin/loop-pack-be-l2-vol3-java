@@ -79,7 +79,7 @@ class OrderApiE2ETest {
                     String.class
             );
             assertThat(listResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
-            assertThat(listResponse.getBody()).contains("PAYMENT_COMPLETED");
+            assertThat(listResponse.getBody()).contains("PAYMENT_PENDING");
 
             // Step 3: 주문 상세 조회
             ResponseEntity<OrderDetailResponse> detailResponse = restTemplate.exchange(
@@ -164,7 +164,7 @@ class OrderApiE2ETest {
 
             // then
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-            assertThat(response.getBody()).contains("PAYMENT_COMPLETED");
+            assertThat(response.getBody()).contains("PAYMENT_PENDING");
         }
 
         @Test

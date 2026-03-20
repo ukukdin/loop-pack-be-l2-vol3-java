@@ -4,6 +4,7 @@ import com.loopers.application.order.CreateOrderUseCase;
 import com.loopers.application.order.UpdateOrderPaymentUseCase;
 import com.loopers.application.payment.PaymentCallbackUseCase;
 import com.loopers.application.payment.PaymentQueryUseCase;
+import com.loopers.application.payment.PaymentStatus;
 import com.loopers.application.payment.RequestPaymentUseCase;
 import com.loopers.domain.model.order.Order;
 import com.loopers.domain.model.order.OrderStatus;
@@ -168,7 +169,7 @@ class PaymentConcurrencyTest {
                     try {
                         paymentCallbackUseCase.handleCallback(
                                 new PaymentCallbackUseCase.CallbackCommand(
-                                        "txn0001", String.valueOf(orderId), "SUCCESS", null
+                                        "txn0001", orderId, PaymentStatus.SUCCESS, null
                                 )
                         );
                         successCount.incrementAndGet();
@@ -225,7 +226,7 @@ class PaymentConcurrencyTest {
                         if (index < 5) {
                             paymentCallbackUseCase.handleCallback(
                                     new PaymentCallbackUseCase.CallbackCommand(
-                                            "txnrace1", String.valueOf(orderId), "SUCCESS", null
+                                            "txnrace1", orderId, PaymentStatus.SUCCESS, null
                                     )
                             );
                         } else {
@@ -282,7 +283,7 @@ class PaymentConcurrencyTest {
                     try {
                         paymentCallbackUseCase.handleCallback(
                                 new PaymentCallbackUseCase.CallbackCommand(
-                                        "txnfail" + orderId, String.valueOf(orderId), "FAILED", "카드 한도 초과"
+                                        "txnfail" + orderId, orderId, PaymentStatus.FAILED, "카드 한도 초과"
                                 )
                         );
                         successCount.incrementAndGet();
@@ -363,7 +364,7 @@ class PaymentConcurrencyTest {
                                         )
                                 );
 
-                        if ("PENDING".equals(paymentResult.status())) {
+                        if (PaymentStatus.PENDING == paymentResult.status()) {
                             pendingCount.incrementAndGet();
                         }
                     } catch (Exception e) {

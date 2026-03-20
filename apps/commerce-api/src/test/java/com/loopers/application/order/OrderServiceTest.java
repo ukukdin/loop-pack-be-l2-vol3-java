@@ -62,6 +62,7 @@ class OrderServiceTest {
             Product product = createProduct(1L, 50000, 100);
             when(productRepository.findActiveByIdWithLock(1L)).thenReturn(Optional.of(product));
             when(productRepository.save(any(Product.class))).thenReturn(product);
+            when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
             var command = new CreateOrderUseCase.OrderCommand(
                     List.of(new CreateOrderUseCase.OrderItemCommand(1L, 2)),

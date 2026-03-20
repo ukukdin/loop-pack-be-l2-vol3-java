@@ -41,7 +41,7 @@ class OrderTest {
         Order order = createOrder();
 
         assertThat(order.getId()).isNull();
-        assertThat(order.getStatus()).isEqualTo(OrderStatus.PAYMENT_COMPLETED);
+        assertThat(order.getStatus()).isEqualTo(OrderStatus.PAYMENT_PENDING);
         assertThat(order.getTotalAmount().getValue()).isEqualTo(40000); // 10000*2 + 20000*1
         assertThat(order.getPaymentAmount().getValue()).isEqualTo(40000);
         assertThat(order.getItems()).hasSize(2);
@@ -112,7 +112,8 @@ class OrderTest {
     @Test
     @DisplayName("PAYMENT_COMPLETED 상태에서 취소 가능")
     void cancel_success() {
-        Order order = createOrder();
+        Order pending = createOrder();
+        Order order = pending.completePayment();
         assertThat(order.isCancellable()).isTrue();
 
         Order cancelled = order.cancel();
@@ -163,7 +164,8 @@ class OrderTest {
     @Test
     @DisplayName("배송지 변경 성공 (PAYMENT_COMPLETED)")
     void updateDeliveryAddress_success() {
-        Order order = createOrder();
+        Order pending = createOrder();
+        Order order = pending.completePayment();
         Order updated = order.updateDeliveryAddress("부산시 해운대구");
 
         assertThat(updated.getAddress()).isEqualTo("부산시 해운대구");
