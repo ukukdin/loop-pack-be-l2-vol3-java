@@ -44,8 +44,10 @@ resilience4j:
   retry:
     instances:
       pg-simulator:
-        max-attempts: 2
-        wait-duration: 1s
+        max-attempts: 3
+        wait-duration: 500ms
+        enable-exponential-backoff: true
+        exponential-backoff-multiplier: 2
         retry-exceptions:
           - feign.RetryableException
         fail-after-max-attempts: true
