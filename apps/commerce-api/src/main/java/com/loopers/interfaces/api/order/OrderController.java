@@ -35,7 +35,7 @@ public class OrderController {
     }
 
     @PostMapping
-    public ResponseEntity<Void> createOrder(@RequestAttribute UserId userId,
+    public ResponseEntity<Void> createOrder(@RequestAttribute("authenticatedUserId") UserId userId,
                                             @RequestBody OrderCreateRequest orderCreateRequest) {
         createOrderUseCase.createOrder(userId, orderCreateRequest.toCommand());
         return ResponseEntity.ok().build();

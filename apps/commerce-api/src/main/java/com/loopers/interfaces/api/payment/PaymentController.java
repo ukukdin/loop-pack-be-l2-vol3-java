@@ -36,7 +36,7 @@ public class PaymentController {
     }
 
     @PostMapping
-    public ResponseEntity<Void> requestPayment(@RequestAttribute UserId userId,
+    public ResponseEntity<Void> requestPayment(@RequestAttribute("authenticatedUserId") UserId userId,
                                                @Valid @RequestBody PaymentRequest request) {
         // 주문의 결제 금액 조회
         CreateOrderUseCase.CreateOrderResult orderInfo =
@@ -72,7 +72,7 @@ public class PaymentController {
 
     @GetMapping("/status/{orderId}")
     public ResponseEntity<PaymentStatusResponse> getPaymentStatus(
-            @RequestAttribute UserId userId,
+            @RequestAttribute("authenticatedUserId") UserId userId,
             @PathVariable Long orderId) {
         PaymentQueryUseCase.PaymentStatusResult result =
                 paymentQueryUseCase.getPaymentStatus(userId, orderId);
