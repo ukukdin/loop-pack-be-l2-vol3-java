@@ -32,6 +32,12 @@ public class OrderRepositoryImpl implements OrderRepository {
     }
 
     @Override
+    public Optional<Order> findByIdWithLock(Long id) {
+        return orderJpaRepository.findByIdWithLock(id)
+                .map(this::toDomain);
+    }
+
+    @Override
     public List<Order> findAllByUserId(UserId userId) {
         return orderJpaRepository.findAllByUserId(userId.getValue()).stream()
                 .map(this::toDomain)

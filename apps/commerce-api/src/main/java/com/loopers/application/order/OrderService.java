@@ -192,7 +192,7 @@ public class OrderService implements CreateOrderUseCase, CancelOrderUseCase, Upd
 
     @Override
     public void completePayment(Long orderId) {
-        Order order = orderRepository.findById(orderId)
+        Order order = orderRepository.findByIdWithLock(orderId)
                 .orElseThrow(() -> new CoreException(ErrorType.ORDER_NOT_FOUND));
 
         if (order.getStatus() != OrderStatus.PAYMENT_PENDING) {
@@ -205,7 +205,7 @@ public class OrderService implements CreateOrderUseCase, CancelOrderUseCase, Upd
 
     @Override
     public void failPayment(Long orderId) {
-        Order order = orderRepository.findById(orderId)
+        Order order = orderRepository.findByIdWithLock(orderId)
                 .orElseThrow(() -> new CoreException(ErrorType.ORDER_NOT_FOUND));
 
         if (order.getStatus() != OrderStatus.PAYMENT_PENDING) {

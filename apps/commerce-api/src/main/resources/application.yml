@@ -60,11 +60,23 @@ spring:
     activate:
       on-profile: local, test
 
+pg-simulator:
+  url: http://localhost:8082
+
+payment:
+  callback-url: http://localhost:8080/api/v1/payments/callback
+
 ---
 spring:
   config:
     activate:
       on-profile: dev
+
+pg-simulator:
+  url: http://pg-simulator:8082
+
+payment:
+  callback-url: http://commerce-api:8080/api/v1/payments/callback
 
 ---
 spring:
@@ -72,15 +84,24 @@ spring:
     activate:
       on-profile: qa
 
+pg-simulator:
+  url: http://pg-simulator:8082
+
+payment:
+  callback-url: http://commerce-api:8080/api/v1/payments/callback
+
 ---
 spring:
   config:
     activate:
       on-profile: prd
 
+pg-simulator:
+  url: http://pg-simulator:8082
+
+payment:
+  callback-url: http://commerce-api:8080/api/v1/payments/callback
+
 springdoc:
   api-docs:
     enabled: false
-
-payment:
-  callback-url: http://localhost:8080/api/v1/payments/callbacks

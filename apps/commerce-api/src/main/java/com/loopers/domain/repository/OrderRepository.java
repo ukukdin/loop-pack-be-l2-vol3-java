@@ -14,6 +14,8 @@ public interface OrderRepository {
 
     Optional<Order> findById(Long id);
 
+    Optional<Order> findByIdWithLock(Long id);
+
     List<Order> findAllByUserId(UserId userId);
 
     List<Order> findAllByUserIdAndDateRange(UserId userId, LocalDateTime startAt, LocalDateTime endAt);
