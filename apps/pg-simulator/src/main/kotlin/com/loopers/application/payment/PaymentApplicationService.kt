@@ -80,6 +80,17 @@ class PaymentApplicationService(
         paymentEventPublisher.publish(event = PaymentEvent.PaymentHandled.from(payment))
     }
 
+    @Transactional
+    fun cancelPayment(userId: String, orderId: String): TransactionInfo {
+        val payments = paymentRepository.findByOrderId(userId = userId, orderId = orderId)
+        val successPayment = payments.find { it.status == com.loopers.domain.payment.TransactionStatus.SUCCESS }
+            ?: throw CoreException(ErrorType.NOT_FOUND, "(orderId: $orderId) 승인완료된 결제건이 존재하지 않습니다.")
+
+        successPayment.cancel()
+
+        return TransactionInfo.from(successPayment)
+    }
+
     fun notifyTransactionResult(transactionKey: String) {
         val payment = paymentRepository.findByTransactionKey(transactionKey)
             ?: throw CoreException(ErrorType.NOT_FOUND, "(transactionKey: $transactionKey) 결제건이 존재하지 않습니다.")

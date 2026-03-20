@@ -23,4 +23,10 @@ public interface PaymentGatewayClient {
             @RequestHeader("X-USER-ID") Long userId,
             @RequestParam String orderId
     );
+
+    @PostMapping("/api/v1/payments/cancel")
+    PaymentGatewayResponse.ApiResponse<PaymentGatewayResponse.Transaction> cancelPayment(
+            @RequestHeader("X-USER-ID") Long userId,
+            @RequestParam String orderId
+    );
 }

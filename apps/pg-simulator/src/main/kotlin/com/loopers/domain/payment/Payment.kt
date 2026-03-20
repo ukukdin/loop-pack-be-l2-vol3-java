@@ -84,4 +84,13 @@ class Payment(
         status = TransactionStatus.FAILED
         reason = "한도초과입니다. 다른 카드를 선택해주세요."
     }
+
+    fun cancel() {
+        if (status != TransactionStatus.SUCCESS) {
+            throw CoreException(ErrorType.INTERNAL_ERROR, "결제취소는 승인완료 상태에서만 가능합니다.")
+        }
+        status = TransactionStatus.CANCELLED
+        reason = "결제가 취소되었습니다."
+        updatedAt = LocalDateTime.now()
+    }
 }

@@ -77,12 +77,13 @@ public class Order extends AggregateRoot {
             throw new IllegalStateException("현재 상태에서는 주문을 취소할 수 없습니다. 현재 상태: " + status.getDescription());
         }
 
+        boolean needsRefund = this.status == OrderStatus.PAYMENT_COMPLETED || this.status == OrderStatus.PREPARING;
         Order cancelled = withStatus(OrderStatus.CANCELLED);
 
         List<OrderCancelledEvent.CancelledItem> cancelledItems = this.items.stream()
                 .map(item -> new OrderCancelledEvent.CancelledItem(item.getProductId(), item.getQuantity()))
                 .toList();
-        cancelled.registerEvent(new OrderCancelledEvent(this.id, cancelledItems, this.userCouponId));
+        cancelled.registerEvent(new OrderCancelledEvent(this.id, this.userId, cancelledItems, this.userCouponId, needsRefund));
 
         return cancelled;
     }
@@ -112,7 +113,7 @@ public class Order extends AggregateRoot {
         List<OrderCancelledEvent.CancelledItem> cancelledItems = this.items.stream()
                 .map(item -> new OrderCancelledEvent.CancelledItem(item.getProductId(), item.getQuantity()))
                 .toList();
-        failed.registerEvent(new OrderCancelledEvent(this.id, cancelledItems, this.userCouponId));
+        failed.registerEvent(new OrderCancelledEvent(this.id, this.userId, cancelledItems, this.userCouponId, false));
 
         return failed;
     }

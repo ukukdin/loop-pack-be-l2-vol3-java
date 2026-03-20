@@ -123,6 +123,7 @@ object PaymentDto {
         PENDING,
         SUCCESS,
         FAILED,
+        CANCELLED,
         ;
 
         companion object {
@@ -130,6 +131,7 @@ object PaymentDto {
                 TransactionStatus.PENDING -> PENDING
                 TransactionStatus.SUCCESS -> SUCCESS
                 TransactionStatus.FAILED -> FAILED
+                TransactionStatus.CANCELLED -> CANCELLED
             }
         }
     }

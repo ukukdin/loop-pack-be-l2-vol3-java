@@ -38,6 +38,16 @@ class PaymentApi(
             .let { ApiResponse.success(it) }
     }
 
+    @PostMapping("/cancel")
+    fun cancelPayment(
+        userInfo: UserInfo,
+        @RequestParam("orderId") orderId: String,
+    ): ApiResponse<PaymentDto.TransactionResponse> {
+        return paymentApplicationService.cancelPayment(userInfo.userId, orderId)
+            .let { PaymentDto.TransactionResponse.from(it) }
+            .let { ApiResponse.success(it) }
+    }
+
     @GetMapping("/{transactionKey}")
     fun getTransaction(
         userInfo: UserInfo,

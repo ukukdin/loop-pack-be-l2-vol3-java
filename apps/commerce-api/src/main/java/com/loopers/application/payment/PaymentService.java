@@ -6,6 +6,8 @@ import com.loopers.infrastructure.pg.PaymentGatewayClient;
 import com.loopers.infrastructure.pg.PaymentGatewayRequest;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.github.resilience4j.retry.annotation.Retry;
+import com.loopers.support.error.CoreException;
+import com.loopers.support.error.ErrorType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -13,7 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class PaymentService implements RequestPaymentUseCase, PaymentCallbackUseCase, PaymentQueryUseCase {
+public class PaymentService implements RequestPaymentUseCase, PaymentCallbackUseCase, PaymentQueryUseCase, RefundPaymentUseCase {
 
     private static final Logger log = LoggerFactory.getLogger(PaymentService.class);
 
@@ -86,6 +88,22 @@ public class PaymentService implements RequestPaymentUseCase, PaymentCallbackUse
     @Transactional
     public void handleCallback(CallbackCommand command) {
         syncOrderStatus(command.orderId(), command.status());
+    }
+
+    @Override
+    @CircuitBreaker(name = "pg-simulator", fallbackMethod = "refundPaymentFallback")
+    @Retry(name = "pg-simulator")
+    public void refundPayment(UserId userId, Long orderId) {
+        pgClient.cancelPayment(
+                Long.valueOf(userId.getValue()),
+                String.valueOf(orderId)
+        );
+        log.info("결제 환불 완료 - orderId: {}", orderId);
+    }
+
+    private void refundPaymentFallback(UserId userId, Long orderId, Exception e) {
+        log.error("PG 결제 환불 실패 - orderId: {}, error: {}", orderId, e.getMessage(), e);
+        throw new CoreException(ErrorType.PAYMENT_REFUND_FAILED);
     }
 
     private void syncOrderStatus(Long orderId, PaymentStatus status) {
