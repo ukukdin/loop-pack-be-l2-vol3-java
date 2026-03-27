@@ -1,34 +1,45 @@
 package com.loopers.interfaces.api.coupon;
 
 import com.loopers.application.coupon.CouponQueryUseCase;
-import com.loopers.application.coupon.IssueCouponUseCase;
+import com.loopers.application.coupon.RequestCouponIssueUseCase;
 import com.loopers.domain.model.user.UserId;
 import com.loopers.interfaces.api.coupon.dto.UserCouponResponse;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1")
 public class CouponController {
 
-    private final IssueCouponUseCase issueCouponUseCase;
+    private final RequestCouponIssueUseCase requestCouponIssueUseCase;
     private final CouponQueryUseCase couponQueryUseCase;
 
-    public CouponController(IssueCouponUseCase issueCouponUseCase,
+    public CouponController(RequestCouponIssueUseCase requestCouponIssueUseCase,
                             CouponQueryUseCase couponQueryUseCase) {
-        this.issueCouponUseCase = issueCouponUseCase;
+        this.requestCouponIssueUseCase = requestCouponIssueUseCase;
         this.couponQueryUseCase = couponQueryUseCase;
     }
 
     @PostMapping("/coupons/{couponId}/issue")
-    public ResponseEntity<Void> issueCoupon(HttpServletRequest request,
-                                            @PathVariable Long couponId) {
+    public ResponseEntity<Map<String, Long>> issueCoupon(HttpServletRequest request,
+                                                         @PathVariable Long couponId) {
         UserId userId = (UserId) request.getAttribute("authenticatedUserId");
-        issueCouponUseCase.issue(userId, couponId);
-        return ResponseEntity.ok().build();
+        Long requestId = requestCouponIssueUseCase.requestIssue(userId, couponId);
+        return ResponseEntity.status(HttpStatus.ACCEPTED)
+                .body(Map.of("requestId", requestId));
+    }
+
+    @GetMapping("/coupons/{couponId}/issue-status")
+    public ResponseEntity<Map<String, String>> getIssueStatus(HttpServletRequest request,
+                                                               @PathVariable Long couponId) {
+        UserId userId = (UserId) request.getAttribute("authenticatedUserId");
+        String status = requestCouponIssueUseCase.getIssueStatus(userId, couponId);
+        return ResponseEntity.ok(Map.of("status", status));
     }
 
     @GetMapping("/users/me/coupons")

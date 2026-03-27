@@ -1,6 +1,5 @@
 package com.loopers.application.order;
 
-import com.loopers.application.payment.RefundPaymentUseCase;
 import com.loopers.domain.model.order.event.OrderCancelledEvent;
 import com.loopers.domain.model.product.Product;
 import com.loopers.domain.model.userCoupon.UserCoupon;
@@ -14,26 +13,27 @@ import org.springframework.stereotype.Component;
 import java.util.Comparator;
 import java.util.List;
 
+/**
+ * 주문 취소 시 재고/쿠폰 복구를 동기적으로 처리한다.
+ * 같은 트랜잭션 내에서 실행되어 데이터 정합성을 보장한다.
+ * PG 환불은 {@link OrderRefundEventHandler}에서 AFTER_COMMIT으로 별도 처리한다.
+ */
 @Component
 public class OrderCancelledEventHandler {
 
     private final ProductRepository productRepository;
     private final UserCouponRepository userCouponRepository;
-    private final RefundPaymentUseCase refundPaymentUseCase;
 
     public OrderCancelledEventHandler(ProductRepository productRepository,
-                                      UserCouponRepository userCouponRepository,
-                                      RefundPaymentUseCase refundPaymentUseCase) {
+                                      UserCouponRepository userCouponRepository) {
         this.productRepository = productRepository;
         this.userCouponRepository = userCouponRepository;
-        this.refundPaymentUseCase = refundPaymentUseCase;
     }
 
     @EventListener
     public void handle(OrderCancelledEvent event) {
         restoreStock(event);
         restoreCoupon(event);
-        refundPayment(event);
     }
 
     private void restoreStock(OrderCancelledEvent event) {
@@ -57,12 +57,5 @@ public class OrderCancelledEventHandler {
                 .orElseThrow(() -> new CoreException(ErrorType.COUPON_NOT_FOUND));
         UserCoupon restored = userCoupon.restore();
         userCouponRepository.save(restored);
-    }
-
-    private void refundPayment(OrderCancelledEvent event) {
-        if (!event.needsRefund()) {
-            return;
-        }
-        refundPaymentUseCase.refundPayment(event.userId(), event.orderId());
     }
 }

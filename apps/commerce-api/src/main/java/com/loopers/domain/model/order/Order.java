@@ -2,6 +2,7 @@ package com.loopers.domain.model.order;
 
 import com.loopers.domain.model.common.AggregateRoot;
 import com.loopers.domain.model.order.event.OrderCancelledEvent;
+import com.loopers.domain.model.order.event.PaymentCompletedEvent;
 import com.loopers.domain.model.user.UserId;
 import lombok.Getter;
 
@@ -101,7 +102,9 @@ public class Order extends AggregateRoot {
         if (this.status != OrderStatus.PAYMENT_PENDING) {
             throw new IllegalStateException("결제 대기 상태에서만 결제 완료 처리가 가능합니다. 현재 상태: " + status.getDescription());
         }
-        return withStatus(OrderStatus.PAYMENT_COMPLETED);
+        Order completed = withStatus(OrderStatus.PAYMENT_COMPLETED);
+        completed.registerEvent(new PaymentCompletedEvent(this.id, this.userId, this.getPaymentAmount().getValue()));
+        return completed;
     }
 
     public Order failPayment() {

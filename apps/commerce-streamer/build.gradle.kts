@@ -20,4 +20,7 @@ dependencies {
     testImplementation(testFixtures(project(":modules:jpa")))
     testImplementation(testFixtures(project(":modules:redis")))
     testImplementation(testFixtures(project(":modules:kafka")))
+
+    // test
+    testImplementation("org.awaitility:awaitility")
 }
