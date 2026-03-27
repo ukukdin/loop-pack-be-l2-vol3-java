@@ -1,9 +1,6 @@
 package com.loopers.interfaces.api.order;
 
-import com.loopers.application.order.CancelOrderUseCase;
-import com.loopers.application.order.CreateOrderUseCase;
-import com.loopers.application.order.OrderQueryUseCase;
-import com.loopers.application.order.UpdateDeliveryAddressUseCase;
+import com.loopers.application.order.*;
 import com.loopers.domain.model.user.UserId;
 import com.loopers.interfaces.api.order.dto.DeliveryAddressUpdateRequest;
 import com.loopers.interfaces.api.order.dto.OrderCreateRequest;
@@ -38,9 +35,8 @@ public class OrderController {
     }
 
     @PostMapping
-    public ResponseEntity<Void> createOrder(HttpServletRequest request,
-                                            @Valid @RequestBody OrderCreateRequest orderCreateRequest) {
-        UserId userId = (UserId) request.getAttribute("authenticatedUserId");
+    public ResponseEntity<Void> createOrder(@RequestAttribute("authenticatedUserId") UserId userId,
+                                            @RequestBody OrderCreateRequest orderCreateRequest) {
         createOrderUseCase.createOrder(userId, orderCreateRequest.toCommand());
         return ResponseEntity.ok().build();
     }

@@ -15,6 +15,10 @@ plugins {
     java
     id("org.springframework.boot") apply false
     id("io.spring.dependency-management")
+    id("org.jetbrains.kotlin.jvm") apply false
+    id("org.jetbrains.kotlin.kapt") apply false
+    id("org.jetbrains.kotlin.plugin.jpa") apply false
+    id("org.jetbrains.kotlin.plugin.spring") apply false
 }
 
 java {

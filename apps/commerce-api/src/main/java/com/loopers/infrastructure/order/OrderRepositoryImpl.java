@@ -3,6 +3,7 @@ package com.loopers.infrastructure.order;
 import com.loopers.domain.model.order.*;
 import com.loopers.domain.model.user.UserId;
 import com.loopers.domain.repository.OrderRepository;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
@@ -32,6 +33,12 @@ public class OrderRepositoryImpl implements OrderRepository {
     }
 
     @Override
+    public Optional<Order> findByIdWithLock(Long id) {
+        return orderJpaRepository.findByIdWithLock(id)
+                .map(this::toDomain);
+    }
+
+    @Override
     public List<Order> findAllByUserId(UserId userId) {
         return orderJpaRepository.findAllByUserId(userId.getValue()).stream()
                 .map(this::toDomain)
@@ -48,6 +55,13 @@ public class OrderRepositoryImpl implements OrderRepository {
     @Override
     public List<Order> findAll() {
         return orderJpaRepository.findAll().stream()
+                .map(this::toDomain)
+                .toList();
+    }
+
+    @Override
+    public List<Order> findByStatusAndCreatedAtBefore(OrderStatus status, LocalDateTime before, PageRequest pageRequest) {
+        return orderJpaRepository.findByStatusAndCreatedAtBefore(status.name(), before).stream()
                 .map(this::toDomain)
                 .toList();
     }

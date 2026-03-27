@@ -13,6 +13,11 @@ import org.springframework.stereotype.Component;
 import java.util.Comparator;
 import java.util.List;
 
+/**
+ * 주문 취소 시 재고/쿠폰 복구를 동기적으로 처리한다.
+ * 같은 트랜잭션 내에서 실행되어 데이터 정합성을 보장한다.
+ * PG 환불은 {@link OrderRefundEventHandler}에서 AFTER_COMMIT으로 별도 처리한다.
+ */
 @Component
 public class OrderCancelledEventHandler {
 

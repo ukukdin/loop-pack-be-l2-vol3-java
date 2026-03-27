@@ -104,7 +104,7 @@ class OrderApiIntegrationTest {
                             .header("X-Loopers-LoginPw", PASSWORD))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.length()").value(1))
-                    .andExpect(jsonPath("$[0].status").value("PAYMENT_COMPLETED"));
+                    .andExpect(jsonPath("$[0].status").value("PAYMENT_PENDING"));
         }
 
         @Test
@@ -117,7 +117,7 @@ class OrderApiIntegrationTest {
                             .header("X-Loopers-LoginPw", PASSWORD))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.receiverName").value("홍길동"))
-                    .andExpect(jsonPath("$.status").value("PAYMENT_COMPLETED"))
+                    .andExpect(jsonPath("$.status").value("PAYMENT_PENDING"))
                     .andExpect(jsonPath("$.items.length()").value(1));
         }
 

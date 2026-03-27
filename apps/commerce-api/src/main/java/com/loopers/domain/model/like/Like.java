@@ -31,13 +31,13 @@ public class Like extends AggregateRoot {
             throw new IllegalArgumentException("상품 ID는 필수입니다.");
         }
         Like like = new Like(null, userId, productId, LocalDateTime.now());
-        like.registerEvent(new ProductLikedEvent(productId));
+        like.registerEvent(new ProductLikedEvent(productId, userId));
         return like;
     }
 
     public Like markUnliked() {
         Like unliked = new Like(this.id, this.userId, this.productId, this.createdAt);
-        unliked.registerEvent(new ProductUnlikedEvent(this.productId));
+        unliked.registerEvent(new ProductUnlikedEvent(this.productId, this.userId));
         return unliked;
     }
 

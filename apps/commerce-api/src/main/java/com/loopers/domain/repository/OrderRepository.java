@@ -1,7 +1,9 @@
 package com.loopers.domain.repository;
 
 import com.loopers.domain.model.order.Order;
+import com.loopers.domain.model.order.OrderStatus;
 import com.loopers.domain.model.user.UserId;
+import org.springframework.data.domain.PageRequest;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -13,9 +15,13 @@ public interface OrderRepository {
 
     Optional<Order> findById(Long id);
 
+    Optional<Order> findByIdWithLock(Long id);
+
     List<Order> findAllByUserId(UserId userId);
 
     List<Order> findAllByUserIdAndDateRange(UserId userId, LocalDateTime startAt, LocalDateTime endAt);
 
     List<Order> findAll();
+
+    List<Order> findByStatusAndCreatedAtBefore(OrderStatus status, LocalDateTime before, PageRequest pageRequest);
 }
