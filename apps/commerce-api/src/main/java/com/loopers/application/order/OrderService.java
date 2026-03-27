@@ -2,8 +2,8 @@ package com.loopers.application.order;
 
 import com.loopers.domain.model.common.DomainEventPublisher;
 import com.loopers.domain.model.coupon.Coupon;
-import com.loopers.domain.model.coupon.DiscountType;
 import com.loopers.domain.model.order.*;
+import com.loopers.domain.model.order.event.OrderCreatedEvent;
 import com.loopers.domain.model.product.Product;
 import com.loopers.domain.model.user.UserId;
 import com.loopers.domain.model.userCoupon.UserCoupon;
@@ -11,17 +11,10 @@ import com.loopers.domain.repository.CouponRepository;
 import com.loopers.domain.repository.OrderRepository;
 import com.loopers.domain.repository.ProductRepository;
 import com.loopers.domain.repository.UserCouponRepository;
-import com.loopers.infrastructure.cache.CacheConfig;
 import com.loopers.support.error.CoreException;
 import com.loopers.support.error.ErrorType;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.cache.Cache;
-import org.springframework.cache.CacheManager;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.math.BigDecimal;
 import java.util.Comparator;
@@ -31,24 +24,20 @@ import java.util.List;
 @Transactional
 public class OrderService implements CreateOrderUseCase, CancelOrderUseCase, UpdateDeliveryAddressUseCase, UpdateOrderPaymentUseCase {
 
-    private static final Logger log = LoggerFactory.getLogger(OrderService.class);
-
     private final OrderRepository orderRepository;
     private final ProductRepository productRepository;
     private final CouponRepository couponRepository;
     private final UserCouponRepository userCouponRepository;
     private final DomainEventPublisher eventPublisher;
-    private final CacheManager cacheManager;
 
     public OrderService(OrderRepository orderRepository, ProductRepository productRepository,
                         CouponRepository couponRepository, UserCouponRepository userCouponRepository,
-                        DomainEventPublisher eventPublisher, CacheManager cacheManager) {
+                        DomainEventPublisher eventPublisher) {
         this.orderRepository = orderRepository;
         this.productRepository = productRepository;
         this.couponRepository = couponRepository;
         this.userCouponRepository = userCouponRepository;
         this.eventPublisher = eventPublisher;
-        this.cacheManager = cacheManager;
     }
 
     @Override
@@ -95,11 +84,11 @@ public class OrderService implements CreateOrderUseCase, CancelOrderUseCase, Upd
 
         Order savedOrder = orderRepository.save(order);
 
-        // 4. 트랜잭션 커밋 후 영향받은 상품의 캐시만 개별 무효화
+        // 4. 주문 생성 이벤트 발행 (캐시 무효화, 유저 행동 로깅은 이벤트 핸들러에서 처리)
         List<Long> affectedProductIds = sortedItems.stream()
                 .map(CreateOrderUseCase.OrderItemCommand::productId)
                 .toList();
-        registerAfterCommitCacheEviction(affectedProductIds);
+        eventPublisher.publish(new OrderCreatedEvent(savedOrder.getId(), userId, affectedProductIds));
 
         return new CreateOrderResult(
                 savedOrder.getId(),
@@ -115,29 +104,6 @@ public class OrderService implements CreateOrderUseCase, CancelOrderUseCase, Upd
                 .orElseThrow(() -> new CoreException(ErrorType.ORDER_NOT_FOUND));
 
         return new CreateOrderResult(order.getId(), (long) order.getPaymentAmount().getValue());
-    }
-
-    private void registerAfterCommitCacheEviction(List<Long> productIds) {
-        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
-            Cache cache = cacheManager.getCache(CacheConfig.PRODUCT_DETAIL);
-            if (cache != null) {
-                productIds.forEach(cache::evict);
-            }
-            return;
-        }
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-                try {
-                    Cache cache = cacheManager.getCache(CacheConfig.PRODUCT_DETAIL);
-                    if (cache != null) {
-                        productIds.forEach(cache::evict);
-                    }
-                } catch (RuntimeException e) {
-                    log.warn("주문 후 캐시 무효화 실패 - productIds: {}, error: {}", productIds, e.getMessage());
-                }
-            }
-        });
     }
 
     private Money processCoupon(UserId userId, Long userCouponId, List<OrderLine> orderLines) {
@@ -201,6 +167,7 @@ public class OrderService implements CreateOrderUseCase, CancelOrderUseCase, Upd
 
         Order completed = order.completePayment();
         orderRepository.save(completed);
+        eventPublisher.publishEvents(completed);
     }
 
     @Override

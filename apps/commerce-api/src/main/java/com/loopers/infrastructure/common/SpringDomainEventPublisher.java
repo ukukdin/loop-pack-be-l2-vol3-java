@@ -1,6 +1,7 @@
 package com.loopers.infrastructure.common;
 
 import com.loopers.domain.model.common.AggregateRoot;
+import com.loopers.domain.model.common.DomainEvent;
 import com.loopers.domain.model.common.DomainEventPublisher;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
@@ -18,5 +19,10 @@ public class SpringDomainEventPublisher implements DomainEventPublisher {
     public void publishEvents(AggregateRoot aggregateRoot) {
         aggregateRoot.getDomainEvents().forEach(eventPublisher::publishEvent);
         aggregateRoot.clearDomainEvents();
+    }
+
+    @Override
+    public void publish(DomainEvent event) {
+        eventPublisher.publishEvent(event);
     }
 }
