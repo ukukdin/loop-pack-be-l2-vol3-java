@@ -7,6 +7,8 @@ import com.loopers.domain.model.user.UserId;
 import com.loopers.domain.repository.CouponRepository;
 import com.loopers.infrastructure.couponissue.CouponIssueRequestJpaEntity;
 import com.loopers.infrastructure.couponissue.CouponIssueRequestJpaRepository;
+import com.loopers.confg.kafka.EventTypes;
+import com.loopers.confg.kafka.KafkaTopics;
 import com.loopers.infrastructure.outbox.OutboxJpaEntity;
 import com.loopers.infrastructure.outbox.OutboxJpaRepository;
 import com.loopers.support.error.CoreException;
@@ -18,10 +20,7 @@ import java.time.LocalDateTime;
 import java.util.Map;
 
 @Service
-@Transactional
 public class CouponIssueRequestService implements RequestCouponIssueUseCase {
-
-    private static final String COUPON_ISSUE_REQUESTS = "coupon-issue-requests";
 
     private final CouponRepository couponRepository;
     private final CouponIssueRequestJpaRepository issueRequestRepository;
@@ -39,6 +38,7 @@ public class CouponIssueRequestService implements RequestCouponIssueUseCase {
     }
 
     @Override
+    @Transactional
     public Long requestIssue(UserId userId, Long couponId) {
         Coupon coupon = couponRepository.findById(couponId)
                 .orElseThrow(() -> new CoreException(ErrorType.COUPON_NOT_FOUND));
@@ -61,8 +61,8 @@ public class CouponIssueRequestService implements RequestCouponIssueUseCase {
                     "requestedAt", LocalDateTime.now().toString()
             ));
             outboxRepository.save(new OutboxJpaEntity(
-                    "COUPON", String.valueOf(couponId), "COUPON_ISSUE_REQUESTED",
-                    COUPON_ISSUE_REQUESTS, String.valueOf(couponId), payload));
+                    "COUPON", String.valueOf(couponId), EventTypes.COUPON_ISSUE_REQUESTED,
+                    KafkaTopics.COUPON_ISSUE_REQUESTS, String.valueOf(couponId), payload));
         } catch (JsonProcessingException e) {
             throw new IllegalStateException("쿠폰 발급 요청 직렬화 실패", e);
         }

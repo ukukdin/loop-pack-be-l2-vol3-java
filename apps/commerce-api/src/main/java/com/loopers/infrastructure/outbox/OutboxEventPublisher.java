@@ -49,7 +49,7 @@ public class OutboxEventPublisher {
             } catch (Exception e) {
                 log.warn("Outbox 이벤트 발행 실패 - eventId: {}, topic: {}, error: {}",
                         event.getId(), event.getTopic(), e.getMessage());
-                break;
+                continue;
             }
         }
     }

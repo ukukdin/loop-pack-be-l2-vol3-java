@@ -11,7 +11,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-@Transactional
 public class LikeService implements LikeUseCase, UnlikeUseCase {
 
     private final LikeRepository likeRepository;
@@ -25,6 +24,7 @@ public class LikeService implements LikeUseCase, UnlikeUseCase {
         this.domainEventPublisher = domainEventPublisher;
     }
 
+    @Transactional
     @Override
     public void like(UserId userId, Long productId) {
         validateProductExists(productId);
@@ -38,6 +38,7 @@ public class LikeService implements LikeUseCase, UnlikeUseCase {
         domainEventPublisher.publishEvents(like);
     }
 
+    @Transactional
     @Override
     public void unlike(UserId userId, Long productId) {
         validateProductExists(productId);

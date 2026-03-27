@@ -14,7 +14,6 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
-@Transactional(readOnly = true)
 public class CouponQueryService implements CouponQueryUseCase {
 
     private final UserCouponRepository userCouponRepository;
@@ -26,6 +25,7 @@ public class CouponQueryService implements CouponQueryUseCase {
         this.couponRepository = couponRepository;
     }
 
+    @Transactional(readOnly = true)
     @Override
     public List<UserCouponInfo> getMyCoupons(UserId userId) {
         List<UserCoupon> userCoupons = userCouponRepository.findByUserId(userId);

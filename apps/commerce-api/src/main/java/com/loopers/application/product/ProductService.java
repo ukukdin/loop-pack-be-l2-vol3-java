@@ -19,7 +19,6 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @Service
-@Transactional
 public class ProductService implements CreateProductUseCase, UpdateProductUseCase, DeleteProductUseCase {
 
     private static final Logger log = LoggerFactory.getLogger(ProductService.class);
@@ -35,6 +34,7 @@ public class ProductService implements CreateProductUseCase, UpdateProductUseCas
         this.cacheManager = cacheManager;
     }
 
+    @Transactional
     @Override
     public void createProduct(ProductCreateCommand command) {
         brandRepository.findActiveById(command.brandId())
@@ -48,6 +48,7 @@ public class ProductService implements CreateProductUseCase, UpdateProductUseCas
         evictProductListAfterCommit();
     }
 
+    @Transactional
     @Override
     public void updateProduct(ProductUpdateCommand command) {
         Product product = findProduct(command.productId());
@@ -60,6 +61,7 @@ public class ProductService implements CreateProductUseCase, UpdateProductUseCas
         evictProductListAfterCommit();
     }
 
+    @Transactional
     @Override
     public void deleteProduct(Long productId) {
         Product product = findProduct(productId);
