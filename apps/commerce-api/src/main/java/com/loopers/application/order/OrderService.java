@@ -21,7 +21,6 @@ import java.util.Comparator;
 import java.util.List;
 
 @Service
-@Transactional
 public class OrderService implements CreateOrderUseCase, CancelOrderUseCase, UpdateDeliveryAddressUseCase, UpdateOrderPaymentUseCase {
 
     private final OrderRepository orderRepository;
@@ -41,6 +40,7 @@ public class OrderService implements CreateOrderUseCase, CancelOrderUseCase, Upd
     }
 
     @Override
+    @Transactional
     public CreateOrderResult createOrder(UserId userId, OrderCommand command) {
         // 1. 재고 확인 및 차감 (비관적 락 - productId 순으로 정렬하여 데드락 방지)
         List<CreateOrderUseCase.OrderItemCommand> sortedItems = command.items().stream()
@@ -157,6 +157,7 @@ public class OrderService implements CreateOrderUseCase, CancelOrderUseCase, Upd
     }
 
     @Override
+    @Transactional
     public void completePayment(Long orderId) {
         Order order = orderRepository.findByIdWithLock(orderId)
                 .orElseThrow(() -> new CoreException(ErrorType.ORDER_NOT_FOUND));
@@ -171,6 +172,7 @@ public class OrderService implements CreateOrderUseCase, CancelOrderUseCase, Upd
     }
 
     @Override
+    @Transactional
     public void failPayment(Long orderId) {
         Order order = orderRepository.findByIdWithLock(orderId)
                 .orElseThrow(() -> new CoreException(ErrorType.ORDER_NOT_FOUND));
@@ -185,6 +187,7 @@ public class OrderService implements CreateOrderUseCase, CancelOrderUseCase, Upd
     }
 
     @Override
+    @Transactional
     public void cancelOrder(UserId userId, Long orderId) {
         Order order = orderRepository.findById(orderId)
                 .filter(o -> o.getUserId().equals(userId))
@@ -196,6 +199,7 @@ public class OrderService implements CreateOrderUseCase, CancelOrderUseCase, Upd
     }
 
     @Override
+    @Transactional
     public void updateDeliveryAddress(UserId userId, Long orderId, String newAddress) {
         Order order = orderRepository.findById(orderId)
                 .filter(o -> o.getUserId().equals(userId))

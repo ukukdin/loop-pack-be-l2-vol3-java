@@ -10,6 +10,10 @@ import java.time.LocalDateTime;
 @Table(name = "coupon_issue_requests")
 public class CouponIssueRequestEntity {
 
+    public static final String STATUS_PENDING = "PENDING";
+    public static final String STATUS_SUCCESS = "SUCCESS";
+    public static final String STATUS_REJECTED = "REJECTED";
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -33,12 +37,12 @@ public class CouponIssueRequestEntity {
     protected CouponIssueRequestEntity() {}
 
     public void markSuccess() {
-        this.status = "SUCCESS";
+        this.status = STATUS_SUCCESS;
         this.processedAt = LocalDateTime.now();
     }
 
     public void markRejected(String reason) {
-        this.status = "REJECTED";
+        this.status = STATUS_REJECTED;
         this.rejectReason = reason;
         this.processedAt = LocalDateTime.now();
     }

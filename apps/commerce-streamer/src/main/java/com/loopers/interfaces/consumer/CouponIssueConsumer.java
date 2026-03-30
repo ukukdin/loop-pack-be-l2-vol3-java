@@ -1,6 +1,8 @@
 package com.loopers.interfaces.consumer;
 
+import com.loopers.confg.kafka.EventTypes;
 import com.loopers.confg.kafka.KafkaConfig;
+import com.loopers.confg.kafka.KafkaTopics;
 import com.loopers.infrastructure.coupon.CouponIssueRequestEntity;
 import com.loopers.infrastructure.coupon.CouponIssueRequestRepository;
 import com.loopers.infrastructure.coupon.UserCouponEntity;
@@ -14,7 +16,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.List;
 import java.util.Map;
@@ -29,26 +31,29 @@ public class CouponIssueConsumer {
     private final UserCouponEntityRepository userCouponRepository;
     private final CouponIssueRequestRepository issueRequestRepository;
     private final EventHandledJpaRepository eventHandledRepository;
+    private final TransactionTemplate transactionTemplate;
 
     public CouponIssueConsumer(StringRedisTemplate redisTemplate,
                                UserCouponEntityRepository userCouponRepository,
                                CouponIssueRequestRepository issueRequestRepository,
-                               EventHandledJpaRepository eventHandledRepository) {
+                               EventHandledJpaRepository eventHandledRepository,
+                               TransactionTemplate transactionTemplate) {
         this.redisTemplate = redisTemplate;
         this.userCouponRepository = userCouponRepository;
         this.issueRequestRepository = issueRequestRepository;
         this.eventHandledRepository = eventHandledRepository;
+        this.transactionTemplate = transactionTemplate;
     }
 
     @KafkaListener(
-            topics = "coupon-issue-requests",
+            topics = KafkaTopics.COUPON_ISSUE_REQUESTS,
             groupId = "streamer-coupon",
             containerFactory = KafkaConfig.BATCH_LISTENER
     )
     public void consume(List<ConsumerRecord<Object, Object>> records, Acknowledgment ack) {
         for (ConsumerRecord<Object, Object> record : records) {
             try {
-                processRecord(record);
+                transactionTemplate.executeWithoutResult(status -> processRecord(record));
             } catch (RuntimeException e) {
                 log.error("coupon-issue-requests 처리 실패 - offset: {}, error: {}",
                         record.offset(), e.getMessage(), e);
@@ -57,9 +62,8 @@ public class CouponIssueConsumer {
         ack.acknowledge();
     }
 
-    @Transactional
     @SuppressWarnings("unchecked")
-    protected void processRecord(ConsumerRecord<Object, Object> record) {
+    private void processRecord(ConsumerRecord<Object, Object> record) {
         Map<String, Object> message = (Map<String, Object>) record.value();
 
         Long eventId = toLong(message.get("eventId"));
@@ -76,14 +80,14 @@ public class CouponIssueConsumer {
                 .orElse(null);
         if (request == null) {
             log.warn("발급 요청을 찾을 수 없음 - requestId: {}", requestId);
-            eventHandledRepository.save(new EventHandledJpaEntity(eventId, "COUPON_ISSUE_REQUESTED"));
+            eventHandledRepository.save(new EventHandledJpaEntity(eventId, EventTypes.COUPON_ISSUE_REQUESTED));
             return;
         }
 
         // 중복 발급 방지
         if (userCouponRepository.existsByCouponIdAndUserId(couponId, userId)) {
             request.markRejected("이미 발급된 쿠폰입니다.");
-            eventHandledRepository.save(new EventHandledJpaEntity(eventId, "COUPON_ISSUE_REQUESTED"));
+            eventHandledRepository.save(new EventHandledJpaEntity(eventId, EventTypes.COUPON_ISSUE_REQUESTED));
             return;
         }
 
@@ -94,7 +98,7 @@ public class CouponIssueConsumer {
             if (currentCount != null && currentCount > maxIssuance) {
                 redisTemplate.opsForValue().decrement(key);
                 request.markRejected("발급 수량 초과");
-                eventHandledRepository.save(new EventHandledJpaEntity(eventId, "COUPON_ISSUE_REQUESTED"));
+                eventHandledRepository.save(new EventHandledJpaEntity(eventId, EventTypes.COUPON_ISSUE_REQUESTED));
                 log.info("쿠폰 발급 거절 (수량 초과) - couponId: {}, userId: {}", couponId, userId);
                 return;
             }
@@ -103,7 +107,7 @@ public class CouponIssueConsumer {
         // 쿠폰 발급
         userCouponRepository.save(UserCouponEntity.issue(couponId, userId));
         request.markSuccess();
-        eventHandledRepository.save(new EventHandledJpaEntity(eventId, "COUPON_ISSUE_REQUESTED"));
+        eventHandledRepository.save(new EventHandledJpaEntity(eventId, EventTypes.COUPON_ISSUE_REQUESTED));
         log.info("쿠폰 발급 성공 - couponId: {}, userId: {}", couponId, userId);
     }
 

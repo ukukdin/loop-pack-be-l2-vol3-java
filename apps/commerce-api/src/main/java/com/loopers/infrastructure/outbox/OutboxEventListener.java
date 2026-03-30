@@ -6,6 +6,8 @@ import com.loopers.domain.model.like.event.ProductLikedEvent;
 import com.loopers.domain.model.like.event.ProductUnlikedEvent;
 import com.loopers.domain.model.order.event.OrderCreatedEvent;
 import com.loopers.domain.model.order.event.PaymentCompletedEvent;
+import com.loopers.confg.kafka.EventTypes;
+import com.loopers.confg.kafka.KafkaTopics;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
@@ -18,9 +20,6 @@ import java.util.Map;
 @Component
 public class OutboxEventListener {
 
-    private static final String CATALOG_EVENTS = "catalog-events";
-    private static final String ORDER_EVENTS = "order-events";
-
     private final OutboxJpaRepository outboxRepository;
     private final ObjectMapper objectMapper;
 
@@ -31,8 +30,8 @@ public class OutboxEventListener {
 
     @EventListener
     public void on(ProductLikedEvent event) {
-        save("PRODUCT", String.valueOf(event.productId()), "PRODUCT_LIKED",
-                CATALOG_EVENTS, String.valueOf(event.productId()),
+        save("PRODUCT", String.valueOf(event.productId()), EventTypes.PRODUCT_LIKED,
+                KafkaTopics.CATALOG_EVENTS, String.valueOf(event.productId()),
                 Map.of("productId", event.productId(),
                         "userId", event.userId().getValue(),
                         "occurredAt", event.occurredAt().toString()));
@@ -40,8 +39,8 @@ public class OutboxEventListener {
 
     @EventListener
     public void on(ProductUnlikedEvent event) {
-        save("PRODUCT", String.valueOf(event.productId()), "PRODUCT_UNLIKED",
-                CATALOG_EVENTS, String.valueOf(event.productId()),
+        save("PRODUCT", String.valueOf(event.productId()), EventTypes.PRODUCT_UNLIKED,
+                KafkaTopics.CATALOG_EVENTS, String.valueOf(event.productId()),
                 Map.of("productId", event.productId(),
                         "userId", event.userId().getValue(),
                         "occurredAt", event.occurredAt().toString()));
@@ -49,8 +48,8 @@ public class OutboxEventListener {
 
     @EventListener
     public void on(OrderCreatedEvent event) {
-        save("ORDER", String.valueOf(event.orderId()), "ORDER_CREATED",
-                ORDER_EVENTS, String.valueOf(event.orderId()),
+        save("ORDER", String.valueOf(event.orderId()), EventTypes.ORDER_CREATED,
+                KafkaTopics.ORDER_EVENTS, String.valueOf(event.orderId()),
                 Map.of("orderId", event.orderId(),
                         "userId", event.userId().getValue(),
                         "productIds", event.productIds(),
@@ -59,8 +58,8 @@ public class OutboxEventListener {
 
     @EventListener
     public void on(PaymentCompletedEvent event) {
-        save("ORDER", String.valueOf(event.orderId()), "PAYMENT_COMPLETED",
-                ORDER_EVENTS, String.valueOf(event.orderId()),
+        save("ORDER", String.valueOf(event.orderId()), EventTypes.PAYMENT_COMPLETED,
+                KafkaTopics.ORDER_EVENTS, String.valueOf(event.orderId()),
                 Map.of("orderId", event.orderId(),
                         "userId", event.userId().getValue(),
                         "paymentAmount", event.paymentAmount(),

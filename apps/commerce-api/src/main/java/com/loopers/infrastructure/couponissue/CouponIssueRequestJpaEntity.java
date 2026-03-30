@@ -12,6 +12,10 @@ import java.time.LocalDateTime;
 })
 public class CouponIssueRequestJpaEntity {
 
+    public static final String STATUS_PENDING = "PENDING";
+    public static final String STATUS_SUCCESS = "SUCCESS";
+    public static final String STATUS_REJECTED = "REJECTED";
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -37,7 +41,7 @@ public class CouponIssueRequestJpaEntity {
     public CouponIssueRequestJpaEntity(Long couponId, String userId) {
         this.couponId = couponId;
         this.userId = userId;
-        this.status = "PENDING";
+        this.status = STATUS_PENDING;
         this.createdAt = LocalDateTime.now();
     }
 }
