@@ -39,7 +39,7 @@ public class OutboxEventPublisher {
     @Transactional
     public void publishPendingEvents() {
         List<OutboxJpaEntity> pendingEvents =
-                outboxRepository.findTop100ByStatusOrderByCreatedAtAsc("PENDING");
+                outboxRepository.findTop100ByStatusOrderByCreatedAtAsc(OutboxJpaEntity.STATUS_PENDING);
 
         for (OutboxJpaEntity event : pendingEvents) {
             try {
