@@ -50,7 +50,15 @@ public enum ErrorType {
 
     /**결제 에러*/
     PAYMENT_REQUEST_FAILED(HttpStatus.BAD_GATEWAY, "PAYMENT_REQUEST_FAILED", "PG 결제요청 실패"),
-    PAYMENT_REFUND_FAILED(HttpStatus.BAD_GATEWAY, "PAYMENT_REFUND_FAILED", "PG 결제환불 실패");
+    PAYMENT_REFUND_FAILED(HttpStatus.BAD_GATEWAY, "PAYMENT_REFUND_FAILED", "PG 결제환불 실패"),
+
+    /** 대기열 에러 */
+    QUEUE_FULL(HttpStatus.SERVICE_UNAVAILABLE, "QUEUE_FULL", "대기열이 가득 찼습니다. 잠시 후 다시 시도해주세요."),
+    QUEUE_NOT_FOUND(HttpStatus.NOT_FOUND, "QUEUE_NOT_FOUND", "대기열에서 찾을 수 없습니다."),
+    QUEUE_ALREADY_HAS_TOKEN(HttpStatus.CONFLICT, "QUEUE_ALREADY_HAS_TOKEN", "이미 입장 토큰이 발급되었습니다. 주문을 진행해주세요."),
+    QUEUE_TOKEN_REQUIRED(HttpStatus.FORBIDDEN, "QUEUE_TOKEN_REQUIRED", "주문을 위해 입장 토큰이 필요합니다."),
+    QUEUE_TOKEN_NOT_FOUND(HttpStatus.FORBIDDEN, "QUEUE_TOKEN_NOT_FOUND", "입장 토큰이 만료되었거나 존재하지 않습니다."),
+    QUEUE_TOKEN_INVALID(HttpStatus.FORBIDDEN, "QUEUE_TOKEN_INVALID", "유효하지 않은 입장 토큰입니다.");
 
     private final HttpStatus status;
     private final String code;

@@ -52,6 +52,14 @@ resilience4j:
         retry-exceptions:
           - feign.RetryableException
         fail-after-max-attempts: true
+queue:
+  batch-size: 18          # 100ms당 토큰 발급 수 (175 TPS / 10 = ~18)
+  token-ttl-seconds: 300  # 입장 토큰 TTL (5분)
+  throughput-per-second: 175  # 초당 처리량 (예상 대기 시간 계산용)
+  max-queue-size: 100000  # 최대 대기열 크기
+  scheduler:
+    interval-ms: 100      # 스케줄러 실행 주기 (Thundering Herd 완화)
+
 springdoc:
   use-fqn: true
   swagger-ui:

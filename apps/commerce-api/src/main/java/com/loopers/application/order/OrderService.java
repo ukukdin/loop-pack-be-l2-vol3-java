@@ -7,10 +7,7 @@ import com.loopers.domain.model.order.event.OrderCreatedEvent;
 import com.loopers.domain.model.product.Product;
 import com.loopers.domain.model.user.UserId;
 import com.loopers.domain.model.userCoupon.UserCoupon;
-import com.loopers.domain.repository.CouponRepository;
-import com.loopers.domain.repository.OrderRepository;
-import com.loopers.domain.repository.ProductRepository;
-import com.loopers.domain.repository.UserCouponRepository;
+import com.loopers.domain.repository.*;
 import com.loopers.support.error.CoreException;
 import com.loopers.support.error.ErrorType;
 import org.springframework.stereotype.Service;
@@ -29,15 +26,17 @@ public class OrderService implements CreateOrderUseCase, CancelOrderUseCase, Upd
     private final CouponRepository couponRepository;
     private final UserCouponRepository userCouponRepository;
     private final DomainEventPublisher eventPublisher;
+    private final EntryTokenRepository entryTokenRepository;
 
     public OrderService(OrderRepository orderRepository, ProductRepository productRepository,
                         CouponRepository couponRepository, UserCouponRepository userCouponRepository,
-                        DomainEventPublisher eventPublisher) {
+                        DomainEventPublisher eventPublisher, EntryTokenRepository entryTokenRepository) {
         this.orderRepository = orderRepository;
         this.productRepository = productRepository;
         this.couponRepository = couponRepository;
         this.userCouponRepository = userCouponRepository;
         this.eventPublisher = eventPublisher;
+        this.entryTokenRepository = entryTokenRepository;
     }
 
     @Override
@@ -89,6 +88,9 @@ public class OrderService implements CreateOrderUseCase, CancelOrderUseCase, Upd
                 .map(CreateOrderUseCase.OrderItemCommand::productId)
                 .toList();
         eventPublisher.publish(new OrderCreatedEvent(savedOrder.getId(), userId, affectedProductIds));
+
+        // 5. 입장 토큰 소비 (주문 완료 후 토큰 삭제)
+        entryTokenRepository.delete(userId);
 
         return new CreateOrderResult(
                 savedOrder.getId(),

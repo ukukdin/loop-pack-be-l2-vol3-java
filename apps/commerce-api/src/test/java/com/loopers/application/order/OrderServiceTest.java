@@ -8,6 +8,7 @@ import com.loopers.domain.model.product.Stock;
 import com.loopers.domain.model.product.ProductData;
 import com.loopers.domain.model.user.UserId;
 import com.loopers.domain.repository.CouponRepository;
+import com.loopers.domain.repository.EntryTokenRepository;
 import com.loopers.support.error.CoreException;
 import com.loopers.domain.repository.OrderRepository;
 import com.loopers.domain.repository.ProductRepository;
@@ -34,6 +35,7 @@ class OrderServiceTest {
     private CouponRepository couponRepository;
     private UserCouponRepository userCouponRepository;
     private DomainEventPublisher eventPublisher;
+    private EntryTokenRepository entryTokenRepository;
     private OrderService service;
 
     @BeforeEach
@@ -43,8 +45,9 @@ class OrderServiceTest {
         couponRepository = mock(CouponRepository.class);
         userCouponRepository = mock(UserCouponRepository.class);
         eventPublisher = mock(DomainEventPublisher.class);
+        entryTokenRepository = mock(EntryTokenRepository.class);
         service = new OrderService(orderRepository, productRepository,
-                couponRepository, userCouponRepository, eventPublisher);
+                couponRepository, userCouponRepository, eventPublisher, entryTokenRepository);
     }
 
     @Nested
