@@ -30,11 +30,17 @@ public class RedisWaitingQueueRepository implements WaitingQueueRepository {
      * KEYS[2] = waiting-queue:seq (INCR 기반 단조 증가 score)
      * ARGV[1] = userId
      * ARGV[2] = maxQueueSize
+     * ARGV[3] = token key prefix (e.g. "entry-token:")
      *
-     * 반환: -1 (대기열 초과), 또는 0-based rank
+     * 반환: -2 (이미 토큰 보유), -1 (대기열 초과), 또는 0-based rank
      */
     private static final DefaultRedisScript<Long> ENTER_SCRIPT = new DefaultRedisScript<>(
             """
+            -- 이미 토큰을 보유했는지 확인 (스케줄러 경합 방지)
+            local tokenKey = ARGV[3] .. ARGV[1]
+            if redis.call('EXISTS', tokenKey) == 1 then
+                return -2
+            end
             -- 이미 대기열에 있는지 확인
             local existingRank = redis.call('ZRANK', KEYS[1], ARGV[1])
             if existingRank then
@@ -97,7 +103,8 @@ public class RedisWaitingQueueRepository implements WaitingQueueRepository {
                 ENTER_SCRIPT,
                 List.of(QUEUE_KEY, QUEUE_SEQ_KEY),
                 userId.getValue(),
-                String.valueOf(maxQueueSize)
+                String.valueOf(maxQueueSize),
+                TOKEN_KEY_PREFIX
         );
         return result != null ? result : -1;
     }

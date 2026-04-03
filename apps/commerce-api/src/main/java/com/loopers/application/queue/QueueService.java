@@ -8,12 +8,17 @@ import com.loopers.domain.repository.WaitingQueueRepository;
 import com.loopers.domain.repository.WaitingQueueRepository.IssuedToken;
 import com.loopers.support.error.CoreException;
 import com.loopers.support.error.ErrorType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 
+
 @Service
 public class QueueService implements EnterQueueUseCase, QueryPositionUseCase, ValidateEntryTokenUseCase {
+
+    private static final Logger log = LoggerFactory.getLogger(QueueService.class);
 
     private final WaitingQueueRepository waitingQueueRepository;
     private final EntryTokenRepository entryTokenRepository;
@@ -29,14 +34,12 @@ public class QueueService implements EnterQueueUseCase, QueryPositionUseCase, Va
 
     @Override
     public EnterQueueResult enter(UserId userId) {
-        // 이미 토큰을 보유한 유저는 대기열 진입 불필요
-        if (entryTokenRepository.exists(userId)) {
-            throw new CoreException(ErrorType.QUEUE_ALREADY_HAS_TOKEN);
-        }
-
-        // Lua 스크립트로 원자적 진입: maxQueueSize 검사 + INCR score + ZADD NX
+        // Lua 스크립트로 완전 원자적 진입: 토큰 보유 확인 + maxQueueSize 검사 + INCR score + ZADD NX
         long rank = waitingQueueRepository.enterAtomically(userId, queueProperties.getMaxQueueSize());
 
+        if (rank == -2) {
+            throw new CoreException(ErrorType.QUEUE_ALREADY_HAS_TOKEN);
+        }
         if (rank == -1) {
             throw new CoreException(ErrorType.QUEUE_FULL);
         }

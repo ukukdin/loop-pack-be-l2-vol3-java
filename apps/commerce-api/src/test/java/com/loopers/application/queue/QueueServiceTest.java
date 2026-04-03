@@ -48,7 +48,6 @@ class QueueServiceTest {
         @DisplayName("대기열 진입 성공 - Lua 스크립트로 원자적 진입 후 순번을 반환한다")
         void enter_success() {
             UserId userId = UserId.of("user0001");
-            when(entryTokenRepository.exists(userId)).thenReturn(false);
             when(waitingQueueRepository.enterAtomically(userId, 100_000L)).thenReturn(50L);
             when(waitingQueueRepository.getTotalSize()).thenReturn(51L);
 
@@ -59,10 +58,10 @@ class QueueServiceTest {
         }
 
         @Test
-        @DisplayName("이미 토큰을 보유한 유저는 대기열 진입 시 예외가 발생한다")
+        @DisplayName("이미 토큰을 보유한 유저는 대기열 진입 시 예외가 발생한다 (Lua가 -2 반환)")
         void enter_fail_already_has_token() {
             UserId userId = UserId.of("user0001");
-            when(entryTokenRepository.exists(userId)).thenReturn(true);
+            when(waitingQueueRepository.enterAtomically(userId, 100_000L)).thenReturn(-2L);
 
             assertThatThrownBy(() -> queueService.enter(userId))
                     .isInstanceOf(CoreException.class)
@@ -74,7 +73,6 @@ class QueueServiceTest {
         @DisplayName("대기열이 가득 찬 경우 진입이 거부된다 (Lua 스크립트가 -1 반환)")
         void enter_fail_queue_full() {
             UserId userId = UserId.of("user0001");
-            when(entryTokenRepository.exists(userId)).thenReturn(false);
             when(waitingQueueRepository.enterAtomically(userId, 100_000L)).thenReturn(-1L);
 
             assertThatThrownBy(() -> queueService.enter(userId))
@@ -87,7 +85,6 @@ class QueueServiceTest {
         @DisplayName("중복 진입 시 기존 순번을 반환한다 (Lua 스크립트가 기존 rank 반환)")
         void enter_duplicate_returns_existing_rank() {
             UserId userId = UserId.of("user0001");
-            when(entryTokenRepository.exists(userId)).thenReturn(false);
             when(waitingQueueRepository.enterAtomically(userId, 100_000L)).thenReturn(10L);
             when(waitingQueueRepository.getTotalSize()).thenReturn(50L);
 
@@ -105,7 +102,6 @@ class QueueServiceTest {
         @DisplayName("중복 유저가 진입 시도하면 Lua 스크립트가 기존 rank를 반환한다")
         void duplicate_user_returns_existing_rank() {
             UserId userId = UserId.of("user0001");
-            when(entryTokenRepository.exists(userId)).thenReturn(false);
 
             // 첫 번째 진입: rank 10 반환
             when(waitingQueueRepository.enterAtomically(userId, 100_000L)).thenReturn(10L);
@@ -128,7 +124,6 @@ class QueueServiceTest {
 
             for (int i = 0; i < 100; i++) {
                 UserId userId = UserId.of(String.format("user%04d", i));
-                when(entryTokenRepository.exists(userId)).thenReturn(false);
                 when(waitingQueueRepository.enterAtomically(eq(userId), eq(100_000L))).thenReturn((long) i);
                 when(waitingQueueRepository.getTotalSize()).thenReturn((long) (i + 1));
 
@@ -283,7 +278,6 @@ class QueueServiceTest {
             AtomicInteger rejectedCount = new AtomicInteger(0);
             for (int i = 0; i < 110; i++) {
                 UserId userId = UserId.of(String.format("user%04d", i));
-                when(entryTokenRepository.exists(userId)).thenReturn(false);
 
                 // 처음 100명은 진입 가능, 이후는 Lua가 -1 반환
                 if (i < 100) {
