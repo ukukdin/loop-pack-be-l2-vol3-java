@@ -5,6 +5,7 @@ import com.loopers.domain.model.queue.QueueProperties;
 import com.loopers.domain.model.user.UserId;
 import com.loopers.domain.repository.EntryTokenRepository;
 import com.loopers.domain.repository.WaitingQueueRepository;
+import com.loopers.domain.repository.WaitingQueueRepository.IssuedToken;
 import com.loopers.support.error.CoreException;
 import com.loopers.support.error.ErrorType;
 import org.junit.jupiter.api.BeforeEach;
@@ -13,7 +14,6 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import java.util.*;
-import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.*;
@@ -45,18 +45,17 @@ class QueueServiceTest {
     class EnterQueue {
 
         @Test
-        @DisplayName("대기열 진입 성공 - 순번과 대기 인원을 반환한다")
+        @DisplayName("대기열 진입 성공 - Lua 스크립트로 원자적 진입 후 순번을 반환한다")
         void enter_success() {
             UserId userId = UserId.of("user0001");
             when(entryTokenRepository.exists(userId)).thenReturn(false);
-            when(waitingQueueRepository.getTotalSize()).thenReturn(50L);
-            when(waitingQueueRepository.enter(eq(userId), anyDouble())).thenReturn(true);
-            when(waitingQueueRepository.getRank(userId)).thenReturn(Optional.of(50L));
+            when(waitingQueueRepository.enterAtomically(userId, 100_000L)).thenReturn(50L);
+            when(waitingQueueRepository.getTotalSize()).thenReturn(51L);
 
             EnterQueueUseCase.EnterQueueResult result = queueService.enter(userId);
 
             assertThat(result.rank()).isEqualTo(51); // 0-based → 1-based
-            verify(waitingQueueRepository).enter(eq(userId), anyDouble());
+            verify(waitingQueueRepository).enterAtomically(userId, 100_000L);
         }
 
         @Test
@@ -72,11 +71,11 @@ class QueueServiceTest {
         }
 
         @Test
-        @DisplayName("대기열이 가득 찬 경우 진입이 거부된다")
+        @DisplayName("대기열이 가득 찬 경우 진입이 거부된다 (Lua 스크립트가 -1 반환)")
         void enter_fail_queue_full() {
             UserId userId = UserId.of("user0001");
             when(entryTokenRepository.exists(userId)).thenReturn(false);
-            when(waitingQueueRepository.getTotalSize()).thenReturn(100_000L);
+            when(waitingQueueRepository.enterAtomically(userId, 100_000L)).thenReturn(-1L);
 
             assertThatThrownBy(() -> queueService.enter(userId))
                     .isInstanceOf(CoreException.class)
@@ -85,13 +84,12 @@ class QueueServiceTest {
         }
 
         @Test
-        @DisplayName("중복 진입 시 기존 순번을 반환한다 (Sorted Set addIfAbsent)")
+        @DisplayName("중복 진입 시 기존 순번을 반환한다 (Lua 스크립트가 기존 rank 반환)")
         void enter_duplicate_returns_existing_rank() {
             UserId userId = UserId.of("user0001");
             when(entryTokenRepository.exists(userId)).thenReturn(false);
+            when(waitingQueueRepository.enterAtomically(userId, 100_000L)).thenReturn(10L);
             when(waitingQueueRepository.getTotalSize()).thenReturn(50L);
-            when(waitingQueueRepository.enter(eq(userId), anyDouble())).thenReturn(false); // 이미 존재
-            when(waitingQueueRepository.getRank(userId)).thenReturn(Optional.of(10L));
 
             EnterQueueUseCase.EnterQueueResult result = queueService.enter(userId);
 
@@ -104,26 +102,23 @@ class QueueServiceTest {
     class ConcurrentEntry {
 
         @Test
-        @DisplayName("중복 유저가 진입 시도하면 addIfAbsent가 false를 반환하여 중복이 방지된다")
-        void duplicate_user_is_rejected_by_sorted_set() {
+        @DisplayName("중복 유저가 진입 시도하면 Lua 스크립트가 기존 rank를 반환한다")
+        void duplicate_user_returns_existing_rank() {
             UserId userId = UserId.of("user0001");
             when(entryTokenRepository.exists(userId)).thenReturn(false);
-            when(waitingQueueRepository.getTotalSize()).thenReturn(10L);
 
-            // 첫 번째 진입: 성공
-            when(waitingQueueRepository.enter(eq(userId), anyDouble())).thenReturn(true);
-            when(waitingQueueRepository.getRank(userId)).thenReturn(Optional.of(10L));
+            // 첫 번째 진입: rank 10 반환
+            when(waitingQueueRepository.enterAtomically(userId, 100_000L)).thenReturn(10L);
+            when(waitingQueueRepository.getTotalSize()).thenReturn(11L);
+
             EnterQueueUseCase.EnterQueueResult first = queueService.enter(userId);
             assertThat(first.rank()).isEqualTo(11);
 
-            // 두 번째 진입: addIfAbsent false (이미 존재) → 기존 순번 반환
-            when(waitingQueueRepository.enter(eq(userId), anyDouble())).thenReturn(false);
-            when(waitingQueueRepository.getRank(userId)).thenReturn(Optional.of(10L));
+            // 두 번째 진입: 이미 존재하므로 동일 rank 반환
             EnterQueueUseCase.EnterQueueResult second = queueService.enter(userId);
             assertThat(second.rank()).isEqualTo(11);
 
-            // enter는 2번 호출되었지만, Sorted Set 특성으로 member는 1개만 존재
-            verify(waitingQueueRepository, times(2)).enter(eq(userId), anyDouble());
+            verify(waitingQueueRepository, times(2)).enterAtomically(userId, 100_000L);
         }
 
         @Test
@@ -134,9 +129,8 @@ class QueueServiceTest {
             for (int i = 0; i < 100; i++) {
                 UserId userId = UserId.of(String.format("user%04d", i));
                 when(entryTokenRepository.exists(userId)).thenReturn(false);
-                when(waitingQueueRepository.getTotalSize()).thenReturn((long) i);
-                when(waitingQueueRepository.enter(eq(userId), anyDouble())).thenReturn(true);
-                when(waitingQueueRepository.getRank(userId)).thenReturn(Optional.of((long) i));
+                when(waitingQueueRepository.enterAtomically(eq(userId), eq(100_000L))).thenReturn((long) i);
+                when(waitingQueueRepository.getTotalSize()).thenReturn((long) (i + 1));
 
                 EnterQueueUseCase.EnterQueueResult result = queueService.enter(userId);
                 ranks.add(result.rank());
@@ -234,46 +228,85 @@ class QueueServiceTest {
     }
 
     @Nested
-    @DisplayName("토큰 발급 (스케줄러)")
+    @DisplayName("토큰 원자적 소비")
+    class TokenConsumption {
+
+        @Test
+        @DisplayName("유효한 토큰 소비 성공 (consumeIfMatches 반환 true)")
+        void consume_success() {
+            UserId userId = UserId.of("user0001");
+            when(entryTokenRepository.consumeIfMatches(userId, "valid-token")).thenReturn(true);
+
+            assertThatCode(() -> queueService.consume(userId, "valid-token"))
+                    .doesNotThrowAnyException();
+        }
+
+        @Test
+        @DisplayName("토큰 미존재 시 예외 (consumeIfMatches 반환 null)")
+        void consume_fail_token_not_found() {
+            UserId userId = UserId.of("user0001");
+            when(entryTokenRepository.consumeIfMatches(userId, "any-token")).thenReturn(null);
+
+            assertThatThrownBy(() -> queueService.consume(userId, "any-token"))
+                    .isInstanceOf(CoreException.class)
+                    .satisfies(e -> assertThat(((CoreException) e).getErrorType())
+                            .isEqualTo(ErrorType.QUEUE_TOKEN_NOT_FOUND));
+        }
+
+        @Test
+        @DisplayName("토큰 불일치 시 예외 (consumeIfMatches 반환 false)")
+        void consume_fail_token_mismatch() {
+            UserId userId = UserId.of("user0001");
+            when(entryTokenRepository.consumeIfMatches(userId, "fake-token")).thenReturn(false);
+
+            assertThatThrownBy(() -> queueService.consume(userId, "fake-token"))
+                    .isInstanceOf(CoreException.class)
+                    .satisfies(e -> assertThat(((CoreException) e).getErrorType())
+                            .isEqualTo(ErrorType.QUEUE_TOKEN_INVALID));
+        }
+    }
+
+    @Nested
+    @DisplayName("토큰 발급 (스케줄러) - Lua 스크립트 원자적 발급")
     class IssueTokens {
 
         @Test
-        @DisplayName("배치 크기만큼 대기열에서 꺼내 토큰을 발급한다")
+        @DisplayName("배치 크기만큼 대기열에서 꺼내 토큰을 원자적으로 발급한다")
         void issueTokens_success() {
-            List<UserId> userIds = List.of(
-                    UserId.of("user0001"),
-                    UserId.of("user0002"),
-                    UserId.of("user0003")
+            List<IssuedToken> issued = List.of(
+                    new IssuedToken(UserId.of("user0001"), "token-1"),
+                    new IssuedToken(UserId.of("user0002"), "token-2"),
+                    new IssuedToken(UserId.of("user0003"), "token-3")
             );
-            when(waitingQueueRepository.popFront(18)).thenReturn(userIds);
+            when(waitingQueueRepository.popAndIssueTokens(18, 300L)).thenReturn(issued);
 
-            int issued = queueService.issueTokens();
+            int count = queueService.issueTokens();
 
-            assertThat(issued).isEqualTo(3);
-            verify(entryTokenRepository, times(3)).save(any(), eq(300L));
+            assertThat(count).isEqualTo(3);
+            verify(waitingQueueRepository).popAndIssueTokens(18, 300L);
         }
 
         @Test
         @DisplayName("대기열이 비어있으면 토큰을 발급하지 않는다")
         void issueTokens_empty_queue() {
-            when(waitingQueueRepository.popFront(18)).thenReturn(List.of());
+            when(waitingQueueRepository.popAndIssueTokens(18, 300L)).thenReturn(List.of());
 
-            int issued = queueService.issueTokens();
+            int count = queueService.issueTokens();
 
-            assertThat(issued).isEqualTo(0);
-            verify(entryTokenRepository, never()).save(any(), anyLong());
+            assertThat(count).isEqualTo(0);
         }
 
         @Test
         @DisplayName("배치 크기보다 대기 인원이 적으면 있는 만큼만 발급한다")
         void issueTokens_less_than_batch() {
-            List<UserId> userIds = List.of(UserId.of("user0001"));
-            when(waitingQueueRepository.popFront(18)).thenReturn(userIds);
+            List<IssuedToken> issued = List.of(
+                    new IssuedToken(UserId.of("user0001"), "token-1")
+            );
+            when(waitingQueueRepository.popAndIssueTokens(18, 300L)).thenReturn(issued);
 
-            int issued = queueService.issueTokens();
+            int count = queueService.issueTokens();
 
-            assertThat(issued).isEqualTo(1);
-            verify(entryTokenRepository, times(1)).save(any(), eq(300L));
+            assertThat(count).isEqualTo(1);
         }
     }
 
@@ -291,11 +324,13 @@ class QueueServiceTest {
                 UserId userId = UserId.of(String.format("user%04d", i));
                 when(entryTokenRepository.exists(userId)).thenReturn(false);
 
-                // 처음 100명은 진입 가능, 이후는 대기열 가득 참
-                long currentSize = Math.min(i, 100);
-                when(waitingQueueRepository.getTotalSize()).thenReturn(currentSize);
-                when(waitingQueueRepository.enter(eq(userId), anyDouble())).thenReturn(true);
-                when(waitingQueueRepository.getRank(userId)).thenReturn(Optional.of((long) i));
+                // 처음 100명은 진입 가능, 이후는 Lua가 -1 반환
+                if (i < 100) {
+                    when(waitingQueueRepository.enterAtomically(userId, 100L)).thenReturn((long) i);
+                    when(waitingQueueRepository.getTotalSize()).thenReturn((long) (i + 1));
+                } else {
+                    when(waitingQueueRepository.enterAtomically(userId, 100L)).thenReturn(-1L);
+                }
 
                 try {
                     queueService.enter(userId);
@@ -312,17 +347,19 @@ class QueueServiceTest {
         @Test
         @DisplayName("스케줄러는 배치 크기 이상을 한 번에 발급하지 않는다")
         void scheduler_respects_batch_size() {
-            // 대기열에 1000명이 있어도 18명만 꺼냄
-            List<UserId> batchUsers = new ArrayList<>();
+            List<IssuedToken> batchIssued = new ArrayList<>();
             for (int i = 0; i < 18; i++) {
-                batchUsers.add(UserId.of(String.format("user%04d", i)));
+                batchIssued.add(new IssuedToken(
+                        UserId.of(String.format("user%04d", i)),
+                        "token-" + i
+                ));
             }
-            when(waitingQueueRepository.popFront(18)).thenReturn(batchUsers);
+            when(waitingQueueRepository.popAndIssueTokens(18, 300L)).thenReturn(batchIssued);
 
             int issued = queueService.issueTokens();
 
             assertThat(issued).isEqualTo(18);
-            verify(waitingQueueRepository).popFront(18); // 정확히 배치 크기만큼 요청
+            verify(waitingQueueRepository).popAndIssueTokens(18, 300L);
         }
     }
 }

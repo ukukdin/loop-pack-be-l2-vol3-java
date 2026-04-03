@@ -7,6 +7,7 @@ import com.loopers.domain.model.queue.QueuePosition;
 import com.loopers.domain.model.user.UserId;
 import com.loopers.domain.repository.EntryTokenRepository;
 import com.loopers.domain.repository.WaitingQueueRepository;
+import com.loopers.support.error.CoreException;
 import com.loopers.testcontainers.PostgreSQLTestContainersConfig;
 import com.loopers.testcontainers.RedisTestContainersConfig;
 import com.loopers.utils.DatabaseCleanUp;
@@ -15,6 +16,7 @@ import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.redis.core.RedisTemplate;
 
 import java.util.*;
 import java.util.concurrent.*;
@@ -22,7 +24,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(
+        webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
+        properties = "queue.token-ttl-seconds=2"  // TTL 테스트를 위해 2초로 설정
+)
 @Import({PostgreSQLTestContainersConfig.class, RedisTestContainersConfig.class})
 class QueueConcurrencyTest {
 
@@ -31,6 +36,7 @@ class QueueConcurrencyTest {
     @Autowired private EntryTokenRepository entryTokenRepository;
     @Autowired private DatabaseCleanUp databaseCleanUp;
     @Autowired private RedisCleanUp redisCleanUp;
+    @Autowired private RedisTemplate<String, String> redisTemplate;
 
     @BeforeEach
     void setUp() {
@@ -56,6 +62,7 @@ class QueueConcurrencyTest {
 
             Set<Long> ranks = Collections.synchronizedSet(new HashSet<>());
             AtomicInteger successCount = new AtomicInteger(0);
+            ConcurrentLinkedQueue<Throwable> errors = new ConcurrentLinkedQueue<>();
 
             for (int i = 0; i < threadCount; i++) {
                 String loginId = String.format("user%04d", i);
@@ -68,7 +75,7 @@ class QueueConcurrencyTest {
                         ranks.add(result.rank());
                         successCount.incrementAndGet();
                     } catch (Exception e) {
-                        // ignore
+                        errors.add(e);
                     } finally {
                         doneLatch.countDown();
                     }
@@ -77,9 +84,12 @@ class QueueConcurrencyTest {
 
             readyLatch.await();
             startLatch.countDown(); // 동시 출발
-            doneLatch.await(30, TimeUnit.SECONDS);
+            assertThat(doneLatch.await(30, TimeUnit.SECONDS)).isTrue();
             executor.shutdown();
+            assertThat(executor.awaitTermination(5, TimeUnit.SECONDS)).isTrue();
 
+            // 예외가 발생하지 않아야 한다
+            assertThat(errors).isEmpty();
             // 50명 모두 성공
             assertThat(successCount.get()).isEqualTo(threadCount);
             // 모든 순번이 고유
@@ -108,7 +118,8 @@ class QueueConcurrencyTest {
                         queueService.enter(userId);
                         successCount.incrementAndGet();
                     } catch (Exception e) {
-                        // ignore
+                        // 중복 진입은 예외 없이 기존 rank를 반환하므로 성공으로 간주
+                        successCount.incrementAndGet();
                     } finally {
                         doneLatch.countDown();
                     }
@@ -117,8 +128,9 @@ class QueueConcurrencyTest {
 
             readyLatch.await();
             startLatch.countDown();
-            doneLatch.await(10, TimeUnit.SECONDS);
+            assertThat(doneLatch.await(10, TimeUnit.SECONDS)).isTrue();
             executor.shutdown();
+            assertThat(executor.awaitTermination(5, TimeUnit.SECONDS)).isTrue();
 
             // Sorted Set 특성: member가 동일하면 1건만 저장
             assertThat(waitingQueueRepository.getTotalSize()).isEqualTo(1);
@@ -151,15 +163,31 @@ class QueueConcurrencyTest {
             UserId firstUser = UserId.of("ttl00000");
             assertThat(entryTokenRepository.exists(firstUser)).isTrue();
 
+            // 발급 직후 TTL이 양수인지 확인
+            Long ttl = redisTemplate.getExpire("entry-token:" + firstUser.getValue());
+            assertThat(ttl).isNotNull().isPositive();
+
             // 순번 조회 시 토큰이 포함되어야 함
             QueuePosition position = queueService.getPosition(firstUser);
             assertThat(position.isReady()).isTrue();
             assertThat(position.getEntryToken()).isNotNull();
+
+            // TTL 만료 대기 (테스트용 TTL = 2초)
+            Thread.sleep(2500);
+
+            // 만료 후 토큰이 사라져야 한다
+            assertThat(entryTokenRepository.exists(firstUser)).isFalse();
+
+            // 대기열에도 없고 토큰도 없으면 → QUEUE_NOT_FOUND
+            Assertions.assertThrows(
+                    CoreException.class,
+                    () -> queueService.getPosition(firstUser)
+            );
         }
 
         @Test
-        @DisplayName("토큰을 수동 삭제하면 순번 조회 시 QUEUE_NOT_FOUND 예외가 발생한다")
-        void deleted_token_and_not_in_queue_should_throw() {
+        @DisplayName("토큰을 소비(consume)하면 순번 조회 시 QUEUE_NOT_FOUND 예외가 발생한다")
+        void consumed_token_should_throw_not_found() {
             UserId userId = UserId.of("del00001");
             queueService.enter(userId);
 
@@ -167,13 +195,14 @@ class QueueConcurrencyTest {
             queueService.issueTokens();
             assertThat(entryTokenRepository.exists(userId)).isTrue();
 
-            // 토큰 소비 (주문 완료 시뮬레이션)
-            entryTokenRepository.delete(userId);
+            // 토큰 조회 후 소비
+            String token = entryTokenRepository.findByUserId(userId).orElseThrow();
+            queueService.consume(userId, token);
             assertThat(entryTokenRepository.exists(userId)).isFalse();
 
             // 대기열에도 없고 토큰도 없으면 → QUEUE_NOT_FOUND
-            org.junit.jupiter.api.Assertions.assertThrows(
-                    com.loopers.support.error.CoreException.class,
+            Assertions.assertThrows(
+                    CoreException.class,
                     () -> queueService.getPosition(userId)
             );
         }
@@ -257,6 +286,7 @@ class QueueConcurrencyTest {
 
             AtomicInteger entrySuccess = new AtomicInteger(0);
             AtomicInteger totalIssued = new AtomicInteger(0);
+            ConcurrentLinkedQueue<Throwable> errors = new ConcurrentLinkedQueue<>();
 
             // 50명 동시 진입
             for (int i = 0; i < entryThreads; i++) {
@@ -268,7 +298,7 @@ class QueueConcurrencyTest {
                         queueService.enter(UserId.of(loginId));
                         entrySuccess.incrementAndGet();
                     } catch (Exception e) {
-                        // ignore
+                        errors.add(e);
                     } finally {
                         doneLatch.countDown();
                     }
@@ -284,7 +314,7 @@ class QueueConcurrencyTest {
                         int issued = queueService.issueTokens();
                         totalIssued.addAndGet(issued);
                     } catch (Exception e) {
-                        // ignore
+                        errors.add(e);
                     } finally {
                         doneLatch.countDown();
                     }
@@ -293,12 +323,72 @@ class QueueConcurrencyTest {
 
             readyLatch.await();
             startLatch.countDown();
-            doneLatch.await(30, TimeUnit.SECONDS);
+            assertThat(doneLatch.await(30, TimeUnit.SECONDS)).isTrue();
             executor.shutdown();
+            assertThat(executor.awaitTermination(5, TimeUnit.SECONDS)).isTrue();
 
+            // 예외가 발생하지 않아야 한다
+            assertThat(errors).isEmpty();
             // 정합성 검증: 대기열 잔여 + 토큰 발급 수 = 진입 성공 수
             long remainingInQueue = waitingQueueRepository.getTotalSize();
             assertThat(remainingInQueue + totalIssued.get()).isEqualTo(entrySuccess.get());
+        }
+    }
+
+    // ==========================================
+    // 시나리오 4: 토큰 동시 소비 — Double-Spend 방지
+    // ==========================================
+    @Nested
+    @DisplayName("시나리오 4: 동일 토큰 동시 소비 시 정확히 하나만 성공")
+    class ConcurrentTokenConsumption {
+
+        @Test
+        @DisplayName("동일 토큰으로 동시에 10번 소비해도 정확히 1번만 성공한다")
+        void concurrent_consume_should_succeed_exactly_once() throws InterruptedException {
+            // 토큰 발급
+            UserId userId = UserId.of("consume001");
+            queueService.enter(userId);
+            queueService.issueTokens();
+            String token = entryTokenRepository.findByUserId(userId).orElseThrow();
+
+            int threadCount = 10;
+            ExecutorService executor = Executors.newFixedThreadPool(threadCount);
+            CountDownLatch readyLatch = new CountDownLatch(threadCount);
+            CountDownLatch startLatch = new CountDownLatch(1);
+            CountDownLatch doneLatch = new CountDownLatch(threadCount);
+
+            AtomicInteger successCount = new AtomicInteger(0);
+            AtomicInteger failCount = new AtomicInteger(0);
+
+            for (int i = 0; i < threadCount; i++) {
+                executor.submit(() -> {
+                    try {
+                        readyLatch.countDown();
+                        startLatch.await();
+                        queueService.consume(userId, token);
+                        successCount.incrementAndGet();
+                    } catch (CoreException e) {
+                        failCount.incrementAndGet();
+                    } catch (Exception e) {
+                        // 예상치 못한 예외
+                        failCount.incrementAndGet();
+                    } finally {
+                        doneLatch.countDown();
+                    }
+                });
+            }
+
+            readyLatch.await();
+            startLatch.countDown();
+            assertThat(doneLatch.await(10, TimeUnit.SECONDS)).isTrue();
+            executor.shutdown();
+            assertThat(executor.awaitTermination(5, TimeUnit.SECONDS)).isTrue();
+
+            // 정확히 1번만 성공
+            assertThat(successCount.get()).isEqualTo(1);
+            assertThat(failCount.get()).isEqualTo(threadCount - 1);
+            // 토큰이 삭제되었는지 확인
+            assertThat(entryTokenRepository.exists(userId)).isFalse();
         }
     }
 }

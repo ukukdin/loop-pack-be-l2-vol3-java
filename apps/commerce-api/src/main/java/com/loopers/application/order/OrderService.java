@@ -26,17 +26,15 @@ public class OrderService implements CreateOrderUseCase, CancelOrderUseCase, Upd
     private final CouponRepository couponRepository;
     private final UserCouponRepository userCouponRepository;
     private final DomainEventPublisher eventPublisher;
-    private final EntryTokenRepository entryTokenRepository;
 
     public OrderService(OrderRepository orderRepository, ProductRepository productRepository,
                         CouponRepository couponRepository, UserCouponRepository userCouponRepository,
-                        DomainEventPublisher eventPublisher, EntryTokenRepository entryTokenRepository) {
+                        DomainEventPublisher eventPublisher) {
         this.orderRepository = orderRepository;
         this.productRepository = productRepository;
         this.couponRepository = couponRepository;
         this.userCouponRepository = userCouponRepository;
         this.eventPublisher = eventPublisher;
-        this.entryTokenRepository = entryTokenRepository;
     }
 
     @Override
@@ -89,8 +87,7 @@ public class OrderService implements CreateOrderUseCase, CancelOrderUseCase, Upd
                 .toList();
         eventPublisher.publish(new OrderCreatedEvent(savedOrder.getId(), userId, affectedProductIds));
 
-        // 5. 입장 토큰 소비 (주문 완료 후 토큰 삭제)
-        entryTokenRepository.delete(userId);
+        // 입장 토큰은 인터셉터에서 원자적으로 소비됨 (consumeIfMatches Lua 스크립트)
 
         return new CreateOrderResult(
                 savedOrder.getId(),

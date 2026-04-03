@@ -37,7 +37,8 @@ public class EntryTokenInterceptor implements HandlerInterceptor {
             throw new CoreException(ErrorType.UNAUTHORIZED);
         }
 
-        validateEntryTokenUseCase.validate(userId, token);
+        // 원자적으로 토큰 검증 + 소비 (동일 토큰 동시 요청 시 정확히 하나만 통과)
+        validateEntryTokenUseCase.consume(userId, token);
         return true;
     }
 }

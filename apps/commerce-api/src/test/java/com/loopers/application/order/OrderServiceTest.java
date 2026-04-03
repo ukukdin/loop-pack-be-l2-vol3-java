@@ -8,7 +8,6 @@ import com.loopers.domain.model.product.Stock;
 import com.loopers.domain.model.product.ProductData;
 import com.loopers.domain.model.user.UserId;
 import com.loopers.domain.repository.CouponRepository;
-import com.loopers.domain.repository.EntryTokenRepository;
 import com.loopers.support.error.CoreException;
 import com.loopers.domain.repository.OrderRepository;
 import com.loopers.domain.repository.ProductRepository;
@@ -35,7 +34,6 @@ class OrderServiceTest {
     private CouponRepository couponRepository;
     private UserCouponRepository userCouponRepository;
     private DomainEventPublisher eventPublisher;
-    private EntryTokenRepository entryTokenRepository;
     private OrderService service;
 
     @BeforeEach
@@ -45,9 +43,8 @@ class OrderServiceTest {
         couponRepository = mock(CouponRepository.class);
         userCouponRepository = mock(UserCouponRepository.class);
         eventPublisher = mock(DomainEventPublisher.class);
-        entryTokenRepository = mock(EntryTokenRepository.class);
         service = new OrderService(orderRepository, productRepository,
-                couponRepository, userCouponRepository, eventPublisher, entryTokenRepository);
+                couponRepository, userCouponRepository, eventPublisher);
     }
 
     @Nested
@@ -55,7 +52,7 @@ class OrderServiceTest {
     class CreateOrder {
 
         @Test
-        @DisplayName("주문 생성 성공")
+        @DisplayName("주문 생성 성공 - 토큰 소비는 인터셉터에서 처리됨")
         void createOrder_success() {
             // given
             UserId userId = UserId.of("test1234");

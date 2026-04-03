@@ -1,11 +1,11 @@
 package com.loopers.application.queue;
 
-import com.loopers.domain.model.queue.EntryToken;
 import com.loopers.domain.model.queue.QueuePosition;
 import com.loopers.domain.model.queue.QueueProperties;
 import com.loopers.domain.model.user.UserId;
 import com.loopers.domain.repository.EntryTokenRepository;
 import com.loopers.domain.repository.WaitingQueueRepository;
+import com.loopers.domain.repository.WaitingQueueRepository.IssuedToken;
 import com.loopers.support.error.CoreException;
 import com.loopers.support.error.ErrorType;
 import org.springframework.stereotype.Service;
@@ -34,21 +34,19 @@ public class QueueService implements EnterQueueUseCase, QueryPositionUseCase, Va
             throw new CoreException(ErrorType.QUEUE_ALREADY_HAS_TOKEN);
         }
 
-        long totalSize = waitingQueueRepository.getTotalSize();
-        if (totalSize >= queueProperties.getMaxQueueSize()) {
+        // Lua 스크립트로 원자적 진입: maxQueueSize 검사 + INCR score + ZADD NX
+        long rank = waitingQueueRepository.enterAtomically(userId, queueProperties.getMaxQueueSize());
+
+        if (rank == -1) {
             throw new CoreException(ErrorType.QUEUE_FULL);
         }
 
-        // Sorted Set의 Set 특성으로 중복 진입 자동 방지 (score만 갱신됨)
-        double score = System.currentTimeMillis();
-        boolean added = waitingQueueRepository.enter(userId, score);
+        long position = rank + 1; // 0-based → 1-based
+        long totalWaiting = waitingQueueRepository.getTotalSize();
+        long throughput = queueProperties.getThroughputPerSecond();
+        long estimatedWait = (throughput > 0) ? position / throughput : 0;
 
-        if (!added) {
-            // 이미 대기열에 있는 유저 → 현재 순번 반환
-            return buildEnterResult(userId);
-        }
-
-        return buildEnterResult(userId);
+        return new EnterQueueResult(position, totalWaiting, estimatedWait);
     }
 
     @Override
@@ -76,30 +74,26 @@ public class QueueService implements EnterQueueUseCase, QueryPositionUseCase, Va
     }
 
     @Override
-    public void consume(UserId userId) {
-        entryTokenRepository.delete(userId);
+    public void consume(UserId userId, String token) {
+        Boolean result = entryTokenRepository.consumeIfMatches(userId, token);
+        if (result == null) {
+            throw new CoreException(ErrorType.QUEUE_TOKEN_NOT_FOUND);
+        }
+        if (!result) {
+            throw new CoreException(ErrorType.QUEUE_TOKEN_INVALID);
+        }
     }
 
+    /**
+     * 대기열에서 batchSize명을 pop하고 토큰을 원자적으로 발급한다.
+     * pop + token save + TTL 설정이 Lua 스크립트로 원자화되어
+     * 중간 실패 시 사용자 유실을 방지한다.
+     */
     public int issueTokens() {
         int batchSize = queueProperties.getBatchSize();
-        List<UserId> userIds = waitingQueueRepository.popFront(batchSize);
+        long ttlSeconds = queueProperties.getTokenTtlSeconds();
 
-        for (UserId userId : userIds) {
-            EntryToken token = EntryToken.issue(userId);
-            entryTokenRepository.save(token, queueProperties.getTokenTtlSeconds());
-        }
-
-        return userIds.size();
-    }
-
-    private EnterQueueResult buildEnterResult(UserId userId) {
-        long rank = waitingQueueRepository.getRank(userId)
-                .orElse(0L);
-        long position = rank + 1;
-        long totalWaiting = waitingQueueRepository.getTotalSize();
-        long throughput = queueProperties.getThroughputPerSecond();
-        long estimatedWait = (throughput > 0) ? position / throughput : 0;
-
-        return new EnterQueueResult(position, totalWaiting, estimatedWait);
+        List<IssuedToken> issuedTokens = waitingQueueRepository.popAndIssueTokens(batchSize, ttlSeconds);
+        return issuedTokens.size();
     }
 }
