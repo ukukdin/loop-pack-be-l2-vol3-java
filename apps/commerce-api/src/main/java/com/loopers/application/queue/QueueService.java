@@ -64,16 +64,6 @@ public class QueueService implements EnterQueueUseCase, QueryPositionUseCase, Va
     }
 
     @Override
-    public void validate(UserId userId, String token) {
-        String storedToken = entryTokenRepository.findByUserId(userId)
-                .orElseThrow(() -> new CoreException(ErrorType.QUEUE_TOKEN_NOT_FOUND));
-
-        if (!storedToken.equals(token)) {
-            throw new CoreException(ErrorType.QUEUE_TOKEN_INVALID);
-        }
-    }
-
-    @Override
     public void consume(UserId userId, String token) {
         Boolean result = entryTokenRepository.consumeIfMatches(userId, token);
         if (result == null) {

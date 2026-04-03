@@ -189,45 +189,6 @@ class QueueServiceTest {
     }
 
     @Nested
-    @DisplayName("토큰 검증")
-    class TokenValidation {
-
-        @Test
-        @DisplayName("유효한 토큰 검증 성공")
-        void validate_success() {
-            UserId userId = UserId.of("user0001");
-            when(entryTokenRepository.findByUserId(userId)).thenReturn(Optional.of("valid-token"));
-
-            assertThatCode(() -> queueService.validate(userId, "valid-token"))
-                    .doesNotThrowAnyException();
-        }
-
-        @Test
-        @DisplayName("토큰이 없는 유저 검증 시 예외 (만료된 경우)")
-        void validate_fail_token_expired() {
-            UserId userId = UserId.of("user0001");
-            when(entryTokenRepository.findByUserId(userId)).thenReturn(Optional.empty());
-
-            assertThatThrownBy(() -> queueService.validate(userId, "any-token"))
-                    .isInstanceOf(CoreException.class)
-                    .satisfies(e -> assertThat(((CoreException) e).getErrorType())
-                            .isEqualTo(ErrorType.QUEUE_TOKEN_NOT_FOUND));
-        }
-
-        @Test
-        @DisplayName("토큰 값이 불일치하면 예외 발생")
-        void validate_fail_token_mismatch() {
-            UserId userId = UserId.of("user0001");
-            when(entryTokenRepository.findByUserId(userId)).thenReturn(Optional.of("real-token"));
-
-            assertThatThrownBy(() -> queueService.validate(userId, "fake-token"))
-                    .isInstanceOf(CoreException.class)
-                    .satisfies(e -> assertThat(((CoreException) e).getErrorType())
-                            .isEqualTo(ErrorType.QUEUE_TOKEN_INVALID));
-        }
-    }
-
-    @Nested
     @DisplayName("토큰 원자적 소비")
     class TokenConsumption {
 
