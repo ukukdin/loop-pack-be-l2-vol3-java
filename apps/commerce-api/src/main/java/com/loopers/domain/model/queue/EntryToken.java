@@ -15,11 +15,15 @@ public class EntryToken {
     private final UserId userId;
 
     private EntryToken(String token, UserId userId) {
-        if (token == null || token.isBlank()) {
+        if (token == null) {
             throw new IllegalArgumentException("token must not be blank");
         }
+        String normalizedToken = token.trim();
+            if (normalizedToken.isEmpty()) {
+                throw new IllegalArgumentException("token must not be blank");
+            }
         Objects.requireNonNull(userId, "userId must not be null");
-        this.token = token;
+        this.token = normalizedToken;
         this.userId = userId;
     }
 
