@@ -25,6 +25,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(authenticationInterceptor)
+                .order(1)
                 .addPathPatterns("/api/v1/users/me", "/api/v1/users/me/**")
                 .addPathPatterns("/api/v1/users/*/likes")
                 .addPathPatterns("/api/v1/products/*/likes")
@@ -34,6 +35,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
 
         // 주문 생성 시 입장 토큰 검증 (인증 인터셉터 이후 실행)
         registry.addInterceptor(entryTokenInterceptor)
+                .order(2)
                 .addPathPatterns("/api/v1/orders");
 
         registry.addInterceptor(adminAuthenticationInterceptor)

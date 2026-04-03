@@ -17,8 +17,8 @@ public class QueueScheduler {
     }
 
     /**
-     * 100ms마다 실행하여 Thundering Herd 완화.
-     * 1초에 175 TPS 기준, 100ms당 ~18명씩 토큰 발급.
+     * 설정된 간격마다 실행하여 Thundering Herd 완화.
+     * 기본 100ms, 1초에 175 TPS 기준 100ms당 ~18명씩 토큰 발급.
      */
     @Scheduled(fixedDelayString = "${queue.scheduler.interval-ms:100}")
     public void issueEntryTokens() {

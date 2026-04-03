@@ -26,7 +26,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest(
         webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = "queue.token-ttl-seconds=2"  // TTL 테스트를 위해 2초로 설정
+        properties = {
+                "queue.token-ttl-seconds=2",           // TTL 테스트를 위해 2초로 설정
+                "queue.scheduler.interval-ms=3600000"   // 스케줄러 간섭 방지 (1시간)
+        }
 )
 @Import({PostgreSQLTestContainersConfig.class, RedisTestContainersConfig.class})
 class QueueConcurrencyTest {

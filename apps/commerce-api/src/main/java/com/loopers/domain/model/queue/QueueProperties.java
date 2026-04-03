@@ -9,4 +9,6 @@ public interface QueueProperties {
     long getThroughputPerSecond();
 
     long getMaxQueueSize();
+
+    long getSchedulerIntervalMs();
 }
