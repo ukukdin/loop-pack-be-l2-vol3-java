@@ -19,7 +19,6 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
-@Transactional(readOnly = true)
 public class ProductQueryService implements ProductQueryUseCase {
 
     private final ProductRepository productRepository;
@@ -34,6 +33,7 @@ public class ProductQueryService implements ProductQueryUseCase {
         this.rankingQueryUseCase = rankingQueryUseCase;
     }
 
+    @Transactional(readOnly = true)
     @Override
     public ProductDetailInfo getProduct(Long productId) {
         ProductCoreInfo core = getProductCore(productId);
@@ -68,6 +68,7 @@ public class ProductQueryService implements ProductQueryUseCase {
         );
     }
 
+    @Transactional(readOnly = true)
     @Override
     @Cacheable(value = CacheConfig.PRODUCT_LIST, key = "'brand:' + #brandId + ':sort:' + #sort + ':page:' + #page + ':size:' + #size")
     public PageResult<ProductSummaryInfo> getProducts(Long brandId, String sort, int page, int size) {

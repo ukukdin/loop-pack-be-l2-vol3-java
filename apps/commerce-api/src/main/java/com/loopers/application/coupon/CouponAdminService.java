@@ -11,7 +11,6 @@ import java.util.Collections;
 import java.util.UUID;
 
 @Service
-@Transactional
 public class CouponAdminService implements CouponAdminUseCase {
 
     private final CouponRepository couponRepository;
@@ -20,6 +19,7 @@ public class CouponAdminService implements CouponAdminUseCase {
         this.couponRepository = couponRepository;
     }
 
+    @Transactional
     @Override
     public void createCoupon(CouponCreateCommand command) {
         DiscountType discountType = DiscountType.valueOf(command.type());
@@ -46,6 +46,7 @@ public class CouponAdminService implements CouponAdminUseCase {
         couponRepository.save(coupon);
     }
 
+    @Transactional
     @Override
     public void updateCoupon(Long couponId, CouponUpdateCommand command) {
         Coupon coupon = couponRepository.findById(couponId)
@@ -64,6 +65,7 @@ public class CouponAdminService implements CouponAdminUseCase {
         couponRepository.save(updated);
     }
 
+    @Transactional
     @Override
     public void deleteCoupon(Long couponId) {
         couponRepository.findById(couponId)

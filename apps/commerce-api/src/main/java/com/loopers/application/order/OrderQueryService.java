@@ -13,7 +13,6 @@ import java.time.LocalTime;
 import java.util.List;
 
 @Service
-@Transactional(readOnly = true)
 public class OrderQueryService implements OrderQueryUseCase {
 
     private final OrderRepository orderRepository;
@@ -22,12 +21,14 @@ public class OrderQueryService implements OrderQueryUseCase {
         this.orderRepository = orderRepository;
     }
 
+    @Transactional(readOnly = true)
     @Override
     public List<OrderSummary> getMyOrders(UserId userId) {
         List<Order> orders = orderRepository.findAllByUserId(userId);
         return toSummaries(orders);
     }
 
+    @Transactional(readOnly = true)
     @Override
     public List<OrderSummary> getMyOrders(UserId userId, LocalDate startAt, LocalDate endAt) {
         List<Order> orders = orderRepository.findAllByUserIdAndDateRange(

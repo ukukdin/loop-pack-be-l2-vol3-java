@@ -52,7 +52,7 @@ class OrderServiceTest {
     class CreateOrder {
 
         @Test
-        @DisplayName("주문 생성 성공")
+        @DisplayName("주문 생성 성공 - 토큰 소비는 인터셉터에서 처리됨")
         void createOrder_success() {
             // given
             UserId userId = UserId.of("test1234");

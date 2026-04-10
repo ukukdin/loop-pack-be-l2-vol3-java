@@ -10,7 +10,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-@Transactional
 public class BrandService implements CreateBrandUseCase, UpdateBrandUseCase, DeleteBrandUseCase {
 
     private final BrandRepository brandRepository;
@@ -21,6 +20,7 @@ public class BrandService implements CreateBrandUseCase, UpdateBrandUseCase, Del
         this.eventPublisher = eventPublisher;
     }
 
+    @Transactional
     @Override
     public void createBrand(String name, String description) {
         BrandName brandName = BrandName.of(name);
@@ -31,6 +31,7 @@ public class BrandService implements CreateBrandUseCase, UpdateBrandUseCase, Del
         brandRepository.save(brand);
     }
 
+    @Transactional
     @Override
     public void updateBrand(Long brandId, String name, String description) {
         Brand brand = findBrand(brandId);
@@ -38,6 +39,7 @@ public class BrandService implements CreateBrandUseCase, UpdateBrandUseCase, Del
         brandRepository.save(updated);
     }
 
+    @Transactional
     @Override
     public void deleteBrand(Long brandId) {
         Brand brand = findBrand(brandId);

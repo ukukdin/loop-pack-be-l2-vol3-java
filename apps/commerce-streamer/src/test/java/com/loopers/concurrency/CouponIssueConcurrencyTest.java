@@ -1,5 +1,7 @@
 package com.loopers.concurrency;
 
+import com.loopers.confg.kafka.KafkaTopics;
+import com.loopers.infrastructure.coupon.CouponIssueRequestEntity;
 import com.loopers.infrastructure.coupon.CouponIssueRequestRepository;
 import com.loopers.infrastructure.coupon.UserCouponEntityRepository;
 import com.loopers.infrastructure.idempotency.EventHandledJpaRepository;
@@ -37,7 +39,7 @@ import static org.awaitility.Awaitility.await;
 @Import({PostgreSQLTestContainersConfig.class, RedisTestContainersConfig.class, KafkaTestContainersConfig.class})
 class CouponIssueConcurrencyTest {
 
-    private static final String TOPIC = "coupon-issue-requests";
+    private static final String TOPIC = KafkaTopics.COUPON_ISSUE_REQUESTS;
     private static final long COUPON_ID = 1L;
     private static final int MAX_ISSUANCE = 100;
     private static final int TOTAL_REQUESTS = 200;
@@ -101,10 +103,10 @@ class CouponIssueConcurrencyTest {
         assertThat(issuedCount).isEqualTo(MAX_ISSUANCE);
 
         long successCount = issueRequestRepository.findAll().stream()
-                .filter(r -> "SUCCESS".equals(r.getStatus()))
+                .filter(r -> CouponIssueRequestEntity.STATUS_SUCCESS.equals(r.getStatus()))
                 .count();
         long rejectedCount = issueRequestRepository.findAll().stream()
-                .filter(r -> "REJECTED".equals(r.getStatus()))
+                .filter(r -> CouponIssueRequestEntity.STATUS_REJECTED.equals(r.getStatus()))
                 .count();
         assertThat(successCount).isEqualTo(MAX_ISSUANCE);
         assertThat(rejectedCount).isEqualTo(TOTAL_REQUESTS - MAX_ISSUANCE);
@@ -194,7 +196,7 @@ class CouponIssueConcurrencyTest {
         assertThat(userCouponRepository.count()).isEqualTo(MAX_ISSUANCE);
 
         long extraRejected = issueRequestRepository.findAll().stream()
-                .filter(r -> "REJECTED".equals(r.getStatus()))
+                .filter(r -> CouponIssueRequestEntity.STATUS_REJECTED.equals(r.getStatus()))
                 .filter(r -> r.getUserId().startsWith("extra"))
                 .count();
         assertThat(extraRejected).isEqualTo(extraBatch);

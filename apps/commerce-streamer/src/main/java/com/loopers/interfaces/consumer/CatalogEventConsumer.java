@@ -1,6 +1,8 @@
 package com.loopers.interfaces.consumer;
 
+import com.loopers.confg.kafka.EventTypes;
 import com.loopers.confg.kafka.KafkaConfig;
+import com.loopers.confg.kafka.KafkaTopics;
 import com.loopers.infrastructure.idempotency.EventHandledJpaEntity;
 import com.loopers.infrastructure.idempotency.EventHandledJpaRepository;
 import com.loopers.infrastructure.metrics.ProductMetricsJpaRepository;
@@ -11,7 +13,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.List;
 import java.util.Map;
@@ -31,17 +33,18 @@ public class CatalogEventConsumer {
         this.metricsRepository = metricsRepository;
         this.eventHandledRepository = eventHandledRepository;
         this.rankingScoreUpdater = rankingScoreUpdater;
+
     }
 
     @KafkaListener(
-            topics = "catalog-events",
+            topics = KafkaTopics.CATALOG_EVENTS,
             groupId = "streamer-catalog",
             containerFactory = KafkaConfig.BATCH_LISTENER
     )
     public void consume(List<ConsumerRecord<Object, Object>> records, Acknowledgment ack) {
         for (ConsumerRecord<Object, Object> record : records) {
             try {
-                processRecord(record);
+                transactionTemplate.executeWithoutResult(status -> processRecord(record));
             } catch (RuntimeException e) {
                 log.error("catalog-events 처리 실패 - offset: {}, error: {}",
                         record.offset(), e.getMessage(), e);
@@ -50,9 +53,8 @@ public class CatalogEventConsumer {
         ack.acknowledge();
     }
 
-    @Transactional
-    protected void processRecord(ConsumerRecord<Object, Object> record) {
-        @SuppressWarnings("unchecked")
+    @SuppressWarnings("unchecked")
+    private void processRecord(ConsumerRecord<Object, Object> record) {
         Map<String, Object> message = (Map<String, Object>) record.value();
 
         Long eventId = toLong(message.get("eventId"));

@@ -10,7 +10,6 @@ import java.util.List;
 import java.util.stream.Stream;
 
 @Service
-@Transactional(readOnly = true)
 public class LikeQueryService implements LikeQueryUseCase {
 
     private final LikeProductReadPort likeProductReadPort;
@@ -19,6 +18,7 @@ public class LikeQueryService implements LikeQueryUseCase {
         this.likeProductReadPort = likeProductReadPort;
     }
 
+    @Transactional(readOnly = true)
     @Override
     public List<LikeInfo> getMyLikes(UserId userId, String sort, Boolean saleYn, String status) {
         List<LikeProductView> likes = likeProductReadPort.findLikedProductsByUserId(userId);

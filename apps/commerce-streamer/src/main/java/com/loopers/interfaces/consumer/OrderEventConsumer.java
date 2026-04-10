@@ -1,6 +1,8 @@
 package com.loopers.interfaces.consumer;
 
+import com.loopers.confg.kafka.EventTypes;
 import com.loopers.confg.kafka.KafkaConfig;
+import com.loopers.confg.kafka.KafkaTopics;
 import com.loopers.infrastructure.idempotency.EventHandledJpaEntity;
 import com.loopers.infrastructure.idempotency.EventHandledJpaRepository;
 import com.loopers.infrastructure.metrics.ProductMetricsJpaRepository;
@@ -11,7 +13,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.List;
 import java.util.Map;
@@ -31,17 +33,18 @@ public class OrderEventConsumer {
         this.metricsRepository = metricsRepository;
         this.eventHandledRepository = eventHandledRepository;
         this.rankingScoreUpdater = rankingScoreUpdater;
+
     }
 
     @KafkaListener(
-            topics = "order-events",
+            topics = KafkaTopics.ORDER_EVENTS,
             groupId = "streamer-order",
             containerFactory = KafkaConfig.BATCH_LISTENER
     )
     public void consume(List<ConsumerRecord<Object, Object>> records, Acknowledgment ack) {
         for (ConsumerRecord<Object, Object> record : records) {
             try {
-                processRecord(record);
+                transactionTemplate.executeWithoutResult(status -> processRecord(record));
             } catch (RuntimeException e) {
                 log.error("order-events 처리 실패 - offset: {}, error: {}",
                         record.offset(), e.getMessage(), e);
@@ -50,9 +53,8 @@ public class OrderEventConsumer {
         ack.acknowledge();
     }
 
-    @Transactional
     @SuppressWarnings("unchecked")
-    protected void processRecord(ConsumerRecord<Object, Object> record) {
+    private void processRecord(ConsumerRecord<Object, Object> record) {
         Map<String, Object> message = (Map<String, Object>) record.value();
 
         Long eventId = toLong(message.get("eventId"));
@@ -63,7 +65,7 @@ public class OrderEventConsumer {
         }
 
         switch (eventType) {
-            case "ORDER_CREATED" -> {
+            case EventTypes.ORDER_CREATED -> {
                 List<Object> productIds = (List<Object>) message.get("productIds");
                 if (productIds != null) {
                     for (Object pid : productIds) {
@@ -73,10 +75,9 @@ public class OrderEventConsumer {
                     }
                 }
             }
-            case "PAYMENT_COMPLETED" -> {
+            case EventTypes.PAYMENT_COMPLETED -> {
                 Long orderId = toLong(message.get("orderId"));
                 long amount = toLong(message.get("paymentAmount"));
-                // 주문의 상품별 매출 배분은 별도 설계 필요 — 여기서는 주문 단위로 기록
                 log.info("결제 완료 집계 - orderId: {}, amount: {}", orderId, amount);
             }
             default -> log.warn("알 수 없는 이벤트 타입: {}", eventType);

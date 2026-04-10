@@ -9,7 +9,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 
 @Service
-@Transactional(readOnly = true)
 public class BrandQueryService implements BrandQueryUseCase {
 
     private final BrandRepository brandRepository;
@@ -18,6 +17,7 @@ public class BrandQueryService implements BrandQueryUseCase {
         this.brandRepository = brandRepository;
     }
 
+    @Transactional(readOnly = true)
     @Override
     public BrandInfo getBrand(Long brandId) {
         Brand brand = brandRepository.findActiveById(brandId)
@@ -25,6 +25,7 @@ public class BrandQueryService implements BrandQueryUseCase {
         return toBrandInfo(brand);
     }
 
+    @Transactional(readOnly = true)
     @Override
     public List<BrandInfo> getBrands() {
         return brandRepository.findAllActive().stream()

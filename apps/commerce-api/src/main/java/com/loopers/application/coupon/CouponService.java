@@ -11,7 +11,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-@Transactional
 public class CouponService implements IssueCouponUseCase {
 
     private final CouponRepository couponRepository;
@@ -23,6 +22,7 @@ public class CouponService implements IssueCouponUseCase {
         this.userCouponRepository = userCouponRepository;
     }
 
+    @Transactional
     @Override
     public void issue(UserId userId, Long couponId) {
         Coupon coupon = couponRepository.findByIdWithLock(couponId)

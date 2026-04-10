@@ -7,10 +7,7 @@ import com.loopers.domain.model.order.event.OrderCreatedEvent;
 import com.loopers.domain.model.product.Product;
 import com.loopers.domain.model.user.UserId;
 import com.loopers.domain.model.userCoupon.UserCoupon;
-import com.loopers.domain.repository.CouponRepository;
-import com.loopers.domain.repository.OrderRepository;
-import com.loopers.domain.repository.ProductRepository;
-import com.loopers.domain.repository.UserCouponRepository;
+import com.loopers.domain.repository.*;
 import com.loopers.support.error.CoreException;
 import com.loopers.support.error.ErrorType;
 import org.springframework.stereotype.Service;
@@ -21,7 +18,6 @@ import java.util.Comparator;
 import java.util.List;
 
 @Service
-@Transactional
 public class OrderService implements CreateOrderUseCase, CancelOrderUseCase, UpdateDeliveryAddressUseCase, UpdateOrderPaymentUseCase {
 
     private final OrderRepository orderRepository;
@@ -41,6 +37,7 @@ public class OrderService implements CreateOrderUseCase, CancelOrderUseCase, Upd
     }
 
     @Override
+    @Transactional
     public CreateOrderResult createOrder(UserId userId, OrderCommand command) {
         // 1. 재고 확인 및 차감 (비관적 락 - productId 순으로 정렬하여 데드락 방지)
         List<CreateOrderUseCase.OrderItemCommand> sortedItems = command.items().stream()
@@ -89,6 +86,8 @@ public class OrderService implements CreateOrderUseCase, CancelOrderUseCase, Upd
                 .map(CreateOrderUseCase.OrderItemCommand::productId)
                 .toList();
         eventPublisher.publish(new OrderCreatedEvent(savedOrder.getId(), userId, affectedProductIds));
+
+        // 입장 토큰은 인터셉터에서 원자적으로 소비됨 (consumeIfMatches Lua 스크립트)
 
         return new CreateOrderResult(
                 savedOrder.getId(),
@@ -157,6 +156,7 @@ public class OrderService implements CreateOrderUseCase, CancelOrderUseCase, Upd
     }
 
     @Override
+    @Transactional
     public void completePayment(Long orderId) {
         Order order = orderRepository.findByIdWithLock(orderId)
                 .orElseThrow(() -> new CoreException(ErrorType.ORDER_NOT_FOUND));
@@ -171,6 +171,7 @@ public class OrderService implements CreateOrderUseCase, CancelOrderUseCase, Upd
     }
 
     @Override
+    @Transactional
     public void failPayment(Long orderId) {
         Order order = orderRepository.findByIdWithLock(orderId)
                 .orElseThrow(() -> new CoreException(ErrorType.ORDER_NOT_FOUND));
@@ -185,6 +186,7 @@ public class OrderService implements CreateOrderUseCase, CancelOrderUseCase, Upd
     }
 
     @Override
+    @Transactional
     public void cancelOrder(UserId userId, Long orderId) {
         Order order = orderRepository.findById(orderId)
                 .filter(o -> o.getUserId().equals(userId))
@@ -196,6 +198,7 @@ public class OrderService implements CreateOrderUseCase, CancelOrderUseCase, Upd
     }
 
     @Override
+    @Transactional
     public void updateDeliveryAddress(UserId userId, Long orderId, String newAddress) {
         Order order = orderRepository.findById(orderId)
                 .filter(o -> o.getUserId().equals(userId))

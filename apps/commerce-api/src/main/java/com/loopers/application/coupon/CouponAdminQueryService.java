@@ -11,7 +11,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-@Transactional(readOnly = true)
 public class CouponAdminQueryService implements CouponAdminQueryUseCase {
 
     private final CouponRepository couponRepository;
@@ -23,6 +22,7 @@ public class CouponAdminQueryService implements CouponAdminQueryUseCase {
         this.userCouponRepository = userCouponRepository;
     }
 
+    @Transactional(readOnly = true)
     @Override
     public CouponDetail getCoupon(Long couponId) {
         Coupon coupon = couponRepository.findById(couponId)
@@ -30,12 +30,14 @@ public class CouponAdminQueryService implements CouponAdminQueryUseCase {
         return toCouponDetail(coupon);
     }
 
+    @Transactional(readOnly = true)
     @Override
     public PageResult<CouponSummary> getCoupons(int page, int size) {
         PageResult<Coupon> coupons = couponRepository.findAll(page, size);
         return coupons.map(this::toCouponSummary);
     }
 
+    @Transactional(readOnly = true)
     @Override
     public PageResult<IssuedCouponInfo> getIssuedCoupons(Long couponId, int page, int size) {
         couponRepository.findById(couponId)

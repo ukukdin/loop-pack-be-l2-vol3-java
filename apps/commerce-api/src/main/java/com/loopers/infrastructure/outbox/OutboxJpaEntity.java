@@ -12,6 +12,9 @@ import java.time.LocalDateTime;
 })
 public class OutboxJpaEntity {
 
+    public static final String STATUS_PENDING = "PENDING";
+    public static final String STATUS_PUBLISHED = "PUBLISHED";
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -52,12 +55,12 @@ public class OutboxJpaEntity {
         this.topic = topic;
         this.partitionKey = partitionKey;
         this.payload = payload;
-        this.status = "PENDING";
+        this.status = STATUS_PENDING;
         this.createdAt = LocalDateTime.now();
     }
 
     public void markPublished() {
-        this.status = "PUBLISHED";
+        this.status = STATUS_PUBLISHED;
         this.publishedAt = LocalDateTime.now();
     }
 }
