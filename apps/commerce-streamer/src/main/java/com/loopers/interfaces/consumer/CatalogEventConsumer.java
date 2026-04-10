@@ -4,6 +4,7 @@ import com.loopers.confg.kafka.KafkaConfig;
 import com.loopers.infrastructure.idempotency.EventHandledJpaEntity;
 import com.loopers.infrastructure.idempotency.EventHandledJpaRepository;
 import com.loopers.infrastructure.metrics.ProductMetricsJpaRepository;
+import com.loopers.infrastructure.ranking.RankingScoreUpdater;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,11 +23,14 @@ public class CatalogEventConsumer {
 
     private final ProductMetricsJpaRepository metricsRepository;
     private final EventHandledJpaRepository eventHandledRepository;
+    private final RankingScoreUpdater rankingScoreUpdater;
 
     public CatalogEventConsumer(ProductMetricsJpaRepository metricsRepository,
-                                EventHandledJpaRepository eventHandledRepository) {
+                                EventHandledJpaRepository eventHandledRepository,
+                                RankingScoreUpdater rankingScoreUpdater) {
         this.metricsRepository = metricsRepository;
         this.eventHandledRepository = eventHandledRepository;
+        this.rankingScoreUpdater = rankingScoreUpdater;
     }
 
     @KafkaListener(
@@ -62,7 +66,10 @@ public class CatalogEventConsumer {
         Long productId = toLong(message.get("productId"));
 
         switch (eventType) {
-            case "PRODUCT_LIKED" -> metricsRepository.upsertLikeCount(productId, 1);
+            case "PRODUCT_LIKED" -> {
+                metricsRepository.upsertLikeCount(productId, 1);
+                rankingScoreUpdater.incrementLikeScore(productId);
+            }
             case "PRODUCT_UNLIKED" -> metricsRepository.upsertLikeCount(productId, -1);
             default -> log.warn("알 수 없는 이벤트 타입: {}", eventType);
         }

@@ -4,6 +4,7 @@ import com.loopers.confg.kafka.KafkaConfig;
 import com.loopers.infrastructure.idempotency.EventHandledJpaEntity;
 import com.loopers.infrastructure.idempotency.EventHandledJpaRepository;
 import com.loopers.infrastructure.metrics.ProductMetricsJpaRepository;
+import com.loopers.infrastructure.ranking.RankingScoreUpdater;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,11 +23,14 @@ public class OrderEventConsumer {
 
     private final ProductMetricsJpaRepository metricsRepository;
     private final EventHandledJpaRepository eventHandledRepository;
+    private final RankingScoreUpdater rankingScoreUpdater;
 
     public OrderEventConsumer(ProductMetricsJpaRepository metricsRepository,
-                              EventHandledJpaRepository eventHandledRepository) {
+                              EventHandledJpaRepository eventHandledRepository,
+                              RankingScoreUpdater rankingScoreUpdater) {
         this.metricsRepository = metricsRepository;
         this.eventHandledRepository = eventHandledRepository;
+        this.rankingScoreUpdater = rankingScoreUpdater;
     }
 
     @KafkaListener(
@@ -63,7 +67,9 @@ public class OrderEventConsumer {
                 List<Object> productIds = (List<Object>) message.get("productIds");
                 if (productIds != null) {
                     for (Object pid : productIds) {
-                        metricsRepository.upsertOrderCount(toLong(pid), 1);
+                        Long productId = toLong(pid);
+                        metricsRepository.upsertOrderCount(productId, 1);
+                        rankingScoreUpdater.incrementOrderScore(productId);
                     }
                 }
             }
