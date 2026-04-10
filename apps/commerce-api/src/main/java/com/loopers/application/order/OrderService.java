@@ -7,10 +7,7 @@ import com.loopers.domain.model.order.event.OrderCreatedEvent;
 import com.loopers.domain.model.product.Product;
 import com.loopers.domain.model.user.UserId;
 import com.loopers.domain.model.userCoupon.UserCoupon;
-import com.loopers.domain.repository.CouponRepository;
-import com.loopers.domain.repository.OrderRepository;
-import com.loopers.domain.repository.ProductRepository;
-import com.loopers.domain.repository.UserCouponRepository;
+import com.loopers.domain.repository.*;
 import com.loopers.support.error.CoreException;
 import com.loopers.support.error.ErrorType;
 import org.springframework.stereotype.Service;
@@ -89,6 +86,8 @@ public class OrderService implements CreateOrderUseCase, CancelOrderUseCase, Upd
                 .map(CreateOrderUseCase.OrderItemCommand::productId)
                 .toList();
         eventPublisher.publish(new OrderCreatedEvent(savedOrder.getId(), userId, affectedProductIds));
+
+        // 입장 토큰은 인터셉터에서 원자적으로 소비됨 (consumeIfMatches Lua 스크립트)
 
         return new CreateOrderResult(
                 savedOrder.getId(),
